@@ -11,9 +11,9 @@ local ffi = require 'ffi'
 -- 34a-34e: draw pallete
 -- 34f: draw colour
 -- 360 - 3ff : stack
--- 400 - 7ff : sprites [2 bpp, 4x4] = 64 sprites
+-- 400 - 7ff : sprites [2 bpp, 4x4] = 192 sprites
 -- 800 - aff : screen [2bpp] = 64x48 screen
--- b00 - fff : code each operation is 2 bytes (although some may take more, e.g. string, which takes 2 byte number literal and loads that many values into a zero terminated string.)
+-- b00 - fff : code, each operation is 2 bytes (although some may take more, e.g. string, which reads bytes until it hits 0, writing each bit to the specified position in gp memory.)
 
 function love.load()
   love.graphics.setDefaultFilter( "nearest" )
