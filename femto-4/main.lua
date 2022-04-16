@@ -63,18 +63,9 @@ t=0
 code={}
 
 ([[
-adc b +64
-adc c +2
-lop:plt x y c
-adc x +1
-tst x >= b
-cjp nextline
+lop:adc a +1
+plt a a a
 jmp lop
-
-nextline:sub x x x
-adc y +1
-jmp lop
-
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)
@@ -99,7 +90,7 @@ function love.update(dt)
   mouse.mb=love.mouse.isDown(3)
   mouse.x,mouse.y=mx,my
   if my==boundscreen_y(my) and mx==boundscreen_x(mx) then mouse.onscreen=true end
-  if currentscene.update then currentscene.update(t) end
+  if currentscene.update then currentscene.update(dt) end
   if currentscene.draw then currentscene.draw(t) end
 end
 
@@ -122,6 +113,8 @@ function love.draw()
   renderscreen:replacePixels(renderdata)
   love.graphics.clear(0,0,0)
   love.graphics.draw(renderscreen,sx,sy,0,6,6)
+
+  love.graphics.print(love.timer.getFPS(),1,1)
 end
 
 function love.keypressed(key)

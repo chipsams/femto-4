@@ -115,11 +115,12 @@ end
 ]]
 local ops_definition={
   [0]={"hlt",function()
+    s.cpubudget=0
     s.running=false
   end,function()
     return 0,0
   end},
-  [1]={{"add","sub"},function(b1,b2)--add
+  {{"add","sub"},function(b1,b2)--add
     local _,r1,r2,r3,negate_r2,absolute=bitsplit(b1,b2,{5,3,3,3,1,1})
     r1,r2,r3=get_regs(r1,r2,r3)
     local result=r1()+r2()*(negate_r2==1 and -1 or 1)
@@ -132,7 +133,7 @@ local ops_definition={
     local b1,b2=bitpack({5,3,3,3,1,1},id,r1,r2,r3,opname=="sub" and 1 or 0,0)
     return true,b1,b2
   end},
-  [2]={"adc",function(b1,b2)--increment
+  {"adc",function(b1,b2)--add constant
     local _,t1,negative,value=bitsplit(b1,b2,{5,3,1,7})
     local r1=get_regs(t1)
     local result=r1()+value*(negative==1 and -1 or 1)
@@ -147,7 +148,7 @@ local ops_definition={
     local b1,b2=bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,tonumber(value))
     return true,b1,b2
   end},
-  [3]={"plt",function(b1,b2)--pset
+  {"plt",function(b1,b2)--pset
     local _,r1,r2,r3=bitsplit(b1,b2,{5,3,3,3,2})
     local r1,r2,r3=get_regs(r1,r2,r3)
     pset(r1(),r2(),r3())
@@ -158,17 +159,27 @@ local ops_definition={
     local b1,b2=bitpack({5,3,3,3,2},id,r1,r2,r3,0)
     return true,b1,b2
   end},
-  [4]={{"jmp","cjp"},function(b1,b2)
+  {"cls",function(b1,b2)
+    s.cpubudget=s.cpubudget-100
+    local _,r1,override_col,override=bitsplit(b1,b2,{5,3,2,1,5})
+    cls(override and override_col or regs[r1]())
+  end,function(id,line)
+    local _,v=tokenize(line)
+    if not v then return false end
+    if reg_names[v] then return true,bitpack({5,3,8},id,reg_names[v],0) end
+    if tonumber(v)  then return true,bitpack({5,3,2,1,5},id,0,tonumber(v),1,0) end
+    return false
+  end},
+  {{"jmp","cjp"},function(b1,b2)
+    s.cpubudget=s.cpubudget+0.5 --now this op only costs half a cycle!
     local op,cond,callstack,jumpadr=bitsplit(b1,b2,{5,1,1,9})
     local t=get_regs(reg_names.t)
-    print(cond,t())
     if cond==0 or t()>0 then
       s.pc=0xb00+jumpadr*2-2
     end
   end,function(id,line,stage)
     print("jmp",line,stage)
     local op,label=unpack(tokenize(line))
-    print(label)
     if stage==1 then
       return true,0,0
     end
@@ -177,7 +188,8 @@ local ops_definition={
     if not s.labels[label] then return false end
     return true,bitpack({5,1,1,9},id,op=="cjp" and 1 or 0,0,s.labels[label])
   end},
-  [5]={"tst",function(b1,b2)
+  {"tst",function(b1,b2)
+    s.cpubudget=s.cpubudget+0.5 --now this op only costs half a cycle!
     local _,ri1,ri2,l0,e0,g0=bitsplit(b1,b2,{5,3,3,1,1,1,2})
     local r1,r2=get_regs(ri1,ri2)
     local dif=r1()-r2()
@@ -208,7 +220,13 @@ local ops_definition={
     if not op_table[op] then return false end
     local mask=bit.bxor(op_table[op],flip and 7 or 0)
     return true,bitpack({5,3,3,3,2},id,ri1,ri2,mask,0)
-  end}
+  end},
+  {"flp",function()
+    s.cpubudget=0
+  end,function(id,line)
+    return true,bitpack({5,11},id,0)
+  end
+  }
 }
 local ops={}
 local op_parse={}
@@ -255,7 +273,7 @@ end
 
 local function reg(initv,fn)
   local v=initv
-  fn=fn and load(fn,nil,nil,{v=v,math=math}) or function(w)
+  fn=fn and load(fn,nil,nil,{v=v,math=math,execstate=s}) or function(w)
     local pv=v
     if w then v=w end
     return pv
@@ -270,27 +288,33 @@ function s.init()
     reg(0),reg(0), -- x-y (gp)
     reg(0), --t (for conditions)
     reg(0,[[
+      execstate.cpubudget=execstate.cpubudget+1
       return math.random(0,255)      
     ]]), --r
     reg(0,[[function(w)
       
     end]])
   }
+  s.cpubudget=0
   s.running=true
   s.pc=0xb00
   s.labels={}
 end
 s.init()
 
-function s.update()
+function s.update(dt)
+  s.cpubudget=s.cpubudget+100000*dt
   if s.running then
-    i=(s.pc-0xb00)/2
+    while s.cpubudget>0 do
+      i=(s.pc-0xb00)/2
+      --print("pc:",i)
+      parsecommand(mem[s.pc],mem[s.pc+1])
+      s.cpubudget=s.cpubudget-1
+      s.pc=s.pc+2
+    end
     rectfill(31,31,64,31+4*2,3)
-    --print("pc:",i)
-    sc_write(tostring(i).."\n",32,32,2)
+    sc_write(tostring(i)..(s.running and "" or "h").."\n",32,32,2)
     sc_write(tostring(s.registers[1]()))
-    parsecommand(mem[s.pc],mem[s.pc+1])
-    s.pc=s.pc+2
   end
 end
 
