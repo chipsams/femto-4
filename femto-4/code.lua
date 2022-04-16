@@ -23,7 +23,7 @@ local shiftheld=false
 
 local function resetselect()
   if not shiftheld and selecting then
-    _print("deselected",shiftheld)
+    print("deselected",shiftheld)
     selecting=false
   end
 end
@@ -97,7 +97,7 @@ function s.update()
     end
     if mouse.y<8 then
       if s.changed then
-        _print("hi")
+        print("hi")
         s.changed=false
         execstate.writei=0xb00
         memset(0xb00,0x400,0)
@@ -147,18 +147,18 @@ function s.draw()
         if not(s.editing_line==s.select_line and s.editing_row==s.select_row) then rect(x1,i*4+1-yoffset,x2,i*4+5-yoffset,3) end
       end
       if colon>0 then
-        print(pad(line:sub(1,colon),4," "),1,i*4+2-yoffset,2)
+        sc_write(pad(line:sub(1,colon),4," "),1,i*4+2-yoffset,2)
       else
-        print(index,1,i*4+2-yoffset,3)
-        print(":",nil,nil,3)
+        sc_write(index,1,i*4+2-yoffset,3)
+        sc_write(":",nil,nil,3)
       end
-      print(displayline,17,i*4+2-yoffset,2)
-      if i==s.editing_line and showcursor then print("|",cursorpos(s.editing_line,s.editing_row),i*4+2-yoffset,1) end
+      sc_write(displayline,17,i*4+2-yoffset,2)
+      if i==s.editing_line and showcursor then sc_write("|",cursorpos(s.editing_line,s.editing_row),i*4+2-yoffset,1) end
     end
     rectfill(0,0,63,4,1)
     rectfill(0,42,63,47,1)
     rectfill(0,42,63,47,1)
-    print("code",1,1,0)
+    sc_write("code",1,1,0)
     if shiftheld then pset(0,0,0) end
 end
 

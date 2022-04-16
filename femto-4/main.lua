@@ -1,4 +1,4 @@
-_print=print
+
 
 local bit = require 'bit' 
 local ffi = require 'ffi'
@@ -24,13 +24,13 @@ function love.load()
   for l=0,0xfff do -- 4096 byte array
     mem[l]=0
   end
-  _print("initializing screen")
+  print("initializing screen")
   for l=0x800,0xaff do -- init screen
     local v=0
     mem[l]=v
   end
   require"graphics"
-  _print("graphics loaded")
+  print("graphics loaded")
   sx,sy=64,64
   
   pal=love.image.newImageData("pallete.png")
@@ -49,7 +49,7 @@ function love.load()
   execstate=require"execute"
   codestate=require"code"
   drawstate=require"draw"
-  currentscene=drawstate
+  currentscene=codestate
 end
 
 t=0

@@ -74,7 +74,7 @@ end
 
 local function get_regs(reg,...)
   if reg then
-    --_print("register:",reg,reg and s.registers[(reg)%8+1] and "exists" or "not real")
+    --print("register:",reg,reg and s.registers[(reg)%8+1] and "exists" or "not real")
     return s.registers[(reg)%8+1],get_regs(...)
   end
   return
@@ -100,7 +100,7 @@ for k,v in pairs(reg_names) do
 end
 local function get_reg_names(reg,...)
   if reg then
-    --_print("register:",reg,reg and s.registers[(reg)%8+1] and "exists" or "not real")
+    --print("register:",reg,reg and s.registers[(reg)%8+1] and "exists" or "not real")
     return reg_names[reg],get_reg_names(...)
   end
   return
@@ -123,7 +123,7 @@ local ops_definition={
     local _,r1,r2,r3,negate_r2,absolute=bitsplit(b1,b2,{5,3,3,3,1,1})
     r1,r2,r3=get_regs(r1,r2,r3)
     local result=r1()+r2()*(negate_r2==1 and -1 or 1)
-    _print(r1(),"+",r2(),"=",result)
+    print(r1(),"+",r2(),"=",result)
     r3(result)
   end,function(id,line)
     local opname,r1,r2,r3=unpack(tokenize(line))
@@ -136,14 +136,14 @@ local ops_definition={
     local _,t1,negative,value=bitsplit(b1,b2,{5,3,1,7})
     local r1=get_regs(t1)
     local result=r1()+value*(negative==1 and -1 or 1)
-    --_print("r"..t1,"("..r1()..")",negative==1 and "-" or "+",value,"=",result)
+    --print("r"..t1,"("..r1()..")",negative==1 and "-" or "+",value,"=",result)
     r1(result)
   end,function(id,line)
     local _,r1,sign,value=unpack(tokenize(line))
-    --_print('"'..(tonumber(value) or "?")..'"')
-    if not (sign=="-" or sign=="+") then _print"no sign" return false end
-    if not reg_names[r1] then _print"no reg" return false end
-    if not tonumber(value) then _print"not a number" return false end
+    --print('"'..(tonumber(value) or "?")..'"')
+    if not (sign=="-" or sign=="+") then print"no sign" return false end
+    if not reg_names[r1] then print"no reg" return false end
+    if not tonumber(value) then print"not a number" return false end
     local b1,b2=bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,tonumber(value))
     return true,b1,b2
   end},
@@ -161,14 +161,14 @@ local ops_definition={
   [4]={{"jmp","cjp"},function(b1,b2)
     local op,cond,callstack,jumpadr=bitsplit(b1,b2,{5,1,1,9})
     local t=get_regs(reg_names.t)
-    _print(cond,t())
+    print(cond,t())
     if cond==0 or t()>0 then
       s.pc=0xb00+jumpadr*2-2
     end
   end,function(id,line,stage)
-    _print("jmp",line,stage)
+    print("jmp",line,stage)
     local op,label=unpack(tokenize(line))
-    _print(label)
+    print(label)
     if stage==1 then
       return true,0,0
     end
@@ -231,7 +231,7 @@ end
 function debugbitsplit(b1,b2,splits)
   local rets={bitsplit(b1,b2,splits)}
   for i,ret in ipairs(rets) do rets[i]=basen(ret,2,splits[i]) end
-  _print(basen(bit.bor(bit.lshift(b1,8)+b2),2),"=",unpack(rets))
+  print(basen(bit.bor(bit.lshift(b1,8)+b2),2),"=",unpack(rets))
 end
 
 --[[
@@ -286,9 +286,9 @@ function s.update()
   if s.running then
     i=(s.pc-0xb00)/2
     rectfill(31,31,64,31+4*2,3)
-    --_print("pc:",i)
-    print(tostring(i).."\n",32,32,2)
-    print(tostring(s.registers[1]()))
+    --print("pc:",i)
+    sc_write(tostring(i).."\n",32,32,2)
+    sc_write(tostring(s.registers[1]()))
     parsecommand(mem[s.pc],mem[s.pc+1])
     s.pc=s.pc+2
   end
@@ -301,13 +301,13 @@ end
 function s.writeinstruction(line)
   line=line:gsub("[%a_]*:","")
   local op=line:gsub("^[%A]*(%a+).*","%1")
-  --_print(op)
+  --print(op)
   local valid,b1,b2=false,0,0
   if op_parse[op_names[op]] then
-    --_print("parsing: ",op)
+    --print("parsing: ",op)
     valid,b1,b2=op_parse[op_names[op]](op_names[op],line)
   end
-  --_print(line,valid,b1,b2)
+  --print(line,valid,b1,b2)
   if valid then
     mem[s.writei  ]=b1
     mem[s.writei+1]=b2
@@ -336,7 +336,7 @@ function s.writeinstructions(code)
   end
   --2: work out where all the labels are, now that non-functional lines have been excised from the code.
   s.labels={}
-  --_print(#code,"->",#strippedcode)
+  --print(#code,"->",#strippedcode)
   for l=1,#strippedcode do
     local label=strippedcode[l]:gsub("([%a_]*:).*","%1")
     if #label>0 then

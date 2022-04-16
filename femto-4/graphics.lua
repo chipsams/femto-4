@@ -95,7 +95,7 @@ end
 ---@param x number
 ---@param y number
 ---@param c number
-function print(st,x,y,c)
+function sc_write(st,x,y,c)
   c=c or mem[0x34f]
   c=c or 0
   mem[0x34f]=c

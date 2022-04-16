@@ -88,7 +88,7 @@ function s.draw()
   rect(spx*4+36,spy*4+16,spx*4+w*4+39,spy*4+h*4+19,2)
 
   --title bar
-  print(s.spritescale,1,1,0)
+  sc_write(s.spritescale,1,1,0)
   if rdown then
     cls()
     sspr(0,0,0,16,12,1)
