@@ -193,6 +193,15 @@ function sspr(sp,x,y,w,h,scale)
   end  
 end
 
+function plot_imgdata(img,x,y,w)
+  for lx=0,img:getWidth()-1 do
+    for ly=0,img:getHeight()-1 do
+      local r,g,b,a=img:getPixel(lx,ly)
+      if a>0 then pset(x+lx,y+ly,math.floor(r + g*2 +.5)) end
+    end
+  end
+end
+
 --- draws the outline of a rectangle
 ---@param x1 number
 ---@param x2 number

@@ -159,7 +159,8 @@ function s.draw()
     rectfill(0,42,63,47,1)
     rectfill(0,42,63,47,1)
     sc_write("code",1,1,0)
-    if shiftheld then pset(0,0,0) end
+    
+    plot_imgdata(cursor,mouse.x,mouse.y,5)
 end
 
 local lastkey=""
@@ -228,12 +229,12 @@ function s.keypressed(key)
     shiftheld=true
   elseif key=="lctrl" then ctrlheld=true
   elseif key=="space" then s.keypressed(" ")
-  elseif key=="c" then
+  elseif key=="c" and ctrlheld then
     if selecting and ctrlheld then
       local txt=get_selected()
       love.system.setClipboardText(txt)
     end
-  elseif key=="v" then
+  elseif key=="v" and ctrlheld then
     if selecting then remove_selected("") end
     local add_txt=love.system.getClipboardText()
     local _,newlines=add_txt:gsub("\n","")
@@ -246,7 +247,7 @@ function s.keypressed(key)
         s.keypressed("return")
       end
     end
-  elseif key=="x" then
+  elseif key=="x" and ctrlheld then
     remove_selected("")
   end
   if s.editing_line~=lastline and s.code[s.editing_line] and s.code[lastline] then

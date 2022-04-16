@@ -24,6 +24,7 @@ function love.load()
   for l=0,0xfff do -- 4096 byte array
     mem[l]=0
   end
+
   print("initializing screen")
   for l=0x800,0xaff do -- init screen
     local v=0
@@ -32,7 +33,9 @@ function love.load()
   require"graphics"
   print("graphics loaded")
   sx,sy=64,64
-  
+
+  love.mouse.setVisible(false)
+  cursor=love.image.newImageData("cursor.png")
   pal=love.image.newImageData("pallete.png")
   for l=0,3 do
     mem[0x346+l]=l  --init screen pallete
@@ -49,6 +52,8 @@ function love.load()
   execstate=require"execute"
   codestate=require"code"
   drawstate=require"draw"
+
+  --change this to change the starting state
   currentscene=codestate
 end
 
@@ -58,8 +63,18 @@ t=0
 code={}
 
 ([[
-lbl:plt rnd rnd rnd
-jmp lbl
+adc b +64
+adc c +2
+lop:plt x y c
+adc x +1
+tst x >= b
+cjp nextline
+jmp lop
+
+nextline:sub x x x
+adc y +1
+jmp lop
+
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)

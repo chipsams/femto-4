@@ -93,6 +93,8 @@ function s.draw()
     cls()
     sspr(0,0,0,16,12,1)
   end
+
+  plot_imgdata(cursor,mouse.x,mouse.y,5)
 end
 
 function s.keypressed(key)
