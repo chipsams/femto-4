@@ -102,6 +102,7 @@ function love.load()
   screen.y=window.h/2-screen.scale*24
 
   love.mouse.setVisible(false)
+  page_select_cursor_png=love.image.newImageData("assets/page_select_cursor.png")
   cursor=love.image.newImageData("assets/cursor.png")
   pal=love.image.newImageData("assets/pallete.png")
   for l=0,3 do
@@ -121,7 +122,7 @@ function love.load()
   drawstate=require"draw"
 
   --change this to change the starting state
-  currentscene=codestate
+  currentscene=drawstate
 end
 
 t=0

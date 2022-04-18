@@ -12,6 +12,14 @@ function pset(x,y,c)
   end
 end
 
+function pget(x,y)
+  if x>=0 and x<=63 and y>=0 and y<=47 then
+    local i=math.floor(x/4+y*16)
+    return bit.band(bit.rshift(mem[i+screenpos],x%4*2),3)
+  end
+  return 0
+end
+
 
 function plotLineLow(x0, y0, x1, y1, c)
   local dx = x1 - x0

@@ -42,6 +42,10 @@ function mid(l,v,u)
   return math.min(math.max(l,v),u)
 end
 
+function lerp(a,b,t)
+  return (1-t)*a+b*t
+end
+
 
 --https://stackoverflow.com/questions/3554315/lua-base-converter
 local floor,insert = math.floor, table.insert
