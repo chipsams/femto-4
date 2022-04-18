@@ -70,18 +70,29 @@ function love.load()
   spritepos=0x400
   base_mem = love.data.newByteData(2 ^ 12)
   mem=ffi.cast("uint8_t*", base_mem:getFFIPointer())
-  for l=0,0xfff do -- 4096 byte array
-    mem[l]=0
-  end
+  --the mem is initialized to zeros anyway!
+  --[[
+    for l=0,0xfff do -- 4096 byte array
+      mem[l]=0
+    end
+  ]]
+  --[[
+    for l=0x800,0xaff do -- init screen
+      local v=0
+      mem[l]=v
+    end
+  ]]
 
-  print("initializing screen")
-  for l=0x800,0xaff do -- init screen
-    local v=0
-    mem[l]=v
-  end
+  love.window.setMode(64,48,{resizable=true})
+  
+
   require"graphics"
   print("graphics loaded")
-  sx,sy=64,64
+  screen={
+    x=0,
+    y=0,
+    scale=1,
+  }
 
   love.mouse.setVisible(false)
   cursor=love.image.newImageData("assets/cursor.png")
@@ -121,13 +132,18 @@ function(v)
   table.insert(code,v)
 end)
 
+function love.resize(w,h)
+  screen.scale=math.min(w*0.75,h)/48
+  screen.x=w/2-screen.scale*32
+  screen.y=h/2-screen.scale*24
+end
 
 function love.update(dt)
   --screenpos=love.mouse.isDown(1) and 0x800 or 0x400
   t=t+dt
   local mx,my=love.mouse.getPosition()
-  mx=math.floor((mx-sx)/6)
-  my=math.floor((my-sy)/6)
+  mx=math.floor((mx-screen.x)/screen.scale)
+  my=math.floor((my-screen.y)/screen.scale)
   mouse.lb=love.mouse.isDown(1)
   mouse.rb=love.mouse.isDown(2)
   mouse.mb=love.mouse.isDown(3)
@@ -155,7 +171,7 @@ function love.draw()
   end)
   renderscreen:replacePixels(renderdata)
   love.graphics.clear(0,0,0)
-  love.graphics.draw(renderscreen,sx,sy,0,6,6)
+  love.graphics.draw(renderscreen,screen.x,screen.y,0,screen.scale,screen.scale)
 
   love.graphics.print(love.timer.getFPS(),1,1)
 end
