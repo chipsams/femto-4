@@ -180,15 +180,20 @@ local ops_definition={
     return true,b1,b2
   end},
   {"plt",function(b1,b2)--pset
-    local _,r1,r2,r3=bitsplit(b1,b2,{5,3,3,3,2})
-    local r1,r2,r3=get_regs(r1,r2,r3)
-    pset(r1(),r2(),r3())
+    local _,r1,r2,or3,_,literal=bitsplit(b1,b2,{5,3,3,3,1,1})
+    local r1,r2,r3=get_regs(r1,r2,or3)
+    pset(r1(),r2(),literal and or3 or r3())
   end,function(id,line)
-    local _,r1,r2,r3=unpack(tokenize(line))
-    r1,r2,r3=get_reg_names(r1,r2,r3)
-    if not (r1 and r2 and r3) then return false end
-    local b1,b2=bitpack({5,3,3,3,2},id,r1,r2,r3,0)
-    return true,b1,b2
+    local _,r1,r2,or3=unpack(tokenize(line))
+    local r1,r2,r3=get_reg_names(r1,r2,or3)
+    print(tonumber(or3) and "is number" or "not number")
+    if not (r1 and r2) then return false end
+    if not r3 and not tonumber(or3) then return false end
+    if tonumber(or3) then
+      return true,bitpack({5,3,3,3,1,1},id,r1,r2,tonumber(or3),0,1)
+    else
+      return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,0,0)
+    end
   end},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100
@@ -263,7 +268,7 @@ local ops_definition={
     return true,bitpack({5,3,8},id,reg,0)
   end},
   {{"stt","stat","get"},function(b1,b2)
-    s.cpubudget=s.cpubudget-10
+    s.cpubudget=s.cpubudget-9
     local _,reg_mode,stat,t_reg=bitsplit(b1,b2,{5,1,7,3})
     t_reg=get_regs(t_reg)
     t_reg(stat_funcs[stat]())
