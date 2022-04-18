@@ -35,8 +35,8 @@ function love.load()
   sx,sy=64,64
 
   love.mouse.setVisible(false)
-  cursor=love.image.newImageData("cursor.png")
-  pal=love.image.newImageData("pallete.png")
+  cursor=love.image.newImageData("assets/cursor.png")
+  pal=love.image.newImageData("assets/pallete.png")
   for l=0,3 do
     mem[0x346+l]=l  --init screen pallete
     mem[0x34a+l]=l  --init draw pallete
@@ -44,7 +44,7 @@ function love.load()
 
   mem[0x346]=0
   
-  font=love.image.newImageData("font.png")
+  font=love.image.newImageData("assets/font.png")
   
   renderdata=love.image.newImageData(64,48)
   renderscreen=love.graphics.newImage(renderdata)
