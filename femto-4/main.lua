@@ -15,6 +15,54 @@ local ffi = require 'ffi'
 -- 800 - aff : screen [2bpp] = 64x48 screen
 -- b00 - fff : code, each operation is 2 bytes (although some may take more, e.g. string, which reads bytes until it hits 0, writing each bit to the specified position in gp memory.)
 
+mouse={
+  x=0,
+  y=0,
+  onscreen=false
+}
+
+function love.run()
+  if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
+
+  -- We don't want the first frame's dt to include time taken by love.load.
+  if love.timer then love.timer.step() end
+
+  local dt = 0
+
+  -- Main loop time.
+  return function()
+    -- Process events.
+    if love.event then
+      love.event.pump()
+      for name, a,b,c,d,e,f in love.event.poll() do
+        if name == "quit" then
+          if not love.quit or not love.quit() then
+            return a or 0
+          end
+        end
+        love.handlers[name](a,b,c,d,e,f)
+      end
+    end
+
+    -- Update dt, as we'll be passing it to update
+    if love.timer then dt = love.timer.step() end
+
+    -- Call update and draw
+    if love.update then love.update(dt) end -- will pass 0 if love.timer is disabled
+
+    if love.graphics and love.graphics.isActive() then
+      love.graphics.origin()
+      love.graphics.clear(love.graphics.getBackgroundColor())
+
+      if love.draw then love.draw() end
+
+      love.graphics.present()
+    end
+
+    if love.timer then love.timer.sleep(0.032) end
+  end
+end
+
 function love.load()
   love.graphics.setDefaultFilter( "nearest" )
   screenpos=0x800
@@ -66,18 +114,12 @@ code={}
 lop:adc a +1
 plt a a a
 jmp lop
-]]):gsub("[^\n]+",function(v)
+]]):gsub("[^\n]+",
+
+function(v)
   table.insert(code,v)
 end)
 
-
-
-
-mouse={
-  x=0,
-  y=0,
-  onscreen=false
-}
 
 function love.update(dt)
   --screenpos=love.mouse.isDown(1) and 0x800 or 0x400
