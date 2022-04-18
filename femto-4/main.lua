@@ -15,6 +15,7 @@ local ffi = require 'ffi'
 -- 800 - aff : screen [2bpp] = 64x48 screen
 -- b00 - fff : code, each operation is 2 bytes (although some may take more, e.g. string, which reads bytes until it hits 0, writing each bit to the specified position in gp memory.)
 
+fps_cap=31
 mouse={
   x=0,
   y=0,
@@ -59,7 +60,7 @@ function love.run()
       love.graphics.present()
     end
 
-    if love.timer then love.timer.sleep(0.032) end
+    if love.timer then love.timer.sleep(1/fps_cap) end
   end
 end
 
