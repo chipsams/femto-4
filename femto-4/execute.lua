@@ -95,7 +95,7 @@ local reg_names={
 for k,v in ipairs(reg_names) do reg_names[v]=k-1 end
 for k,v in pairs(reg_names) do
   if type(k)=="number" then
-    reg_names[k]=nil
+    --reg_names[k]=nil
   end
 end
 local function get_reg_names(reg,...)
@@ -124,7 +124,7 @@ local ops_definition={
     local _,r1,r2,r3,negate_r2,absolute=bitsplit(b1,b2,{5,3,3,3,1,1})
     r1,r2,r3=get_regs(r1,r2,r3)
     local result=r1()+r2()*(negate_r2==1 and -1 or 1)
-    print(r1(),"+",r2(),"=",result)
+    --print(r1(),"+",r2(),"=",result)
     r3(result)
   end,function(id,line)
     local opname,r1,r2,r3=unpack(tokenize(line))
@@ -221,6 +221,16 @@ local ops_definition={
     local mask=bit.bxor(op_table[op],flip and 7 or 0)
     return true,bitpack({5,3,3,3,2},id,ri1,ri2,mask,0)
   end},
+  {"deb",function(b1,b2)
+      local _,reg_i=bitsplit(b1,b2,{5,3,8})
+      local reg=get_regs(reg_i)
+      print("debug:",reg_names[reg_i+1],reg())
+  end,function(id,line)
+    local _,reg=unpack(tokenize(line))
+    reg=get_reg_names(reg)
+    if not reg then return false end
+    return true,bitpack({5,3,8},id,reg,0)
+  end},
   {"flp",function()
     s.cpubudget=0
   end,function(id,line)
@@ -273,7 +283,18 @@ end
 
 local function reg(initv,fn)
   local v=initv
-  fn=fn and load(fn,nil,nil,{v=v,math=math,execstate=s}) or function(w)
+  local loaded_fn
+  if fn then
+    local loaded_fn,err=load(fn,nil,nil,{v=v,math=math,execstate=s,mem=mem,print=print})
+    if not loaded_fn then print("error loading register:",err) end
+    local success,error_or_fn=pcall(loaded_fn)
+    if not success then 
+      print("execution error:",error_or_fn)
+    else
+      fn=error_or_fn
+    end
+  end
+  fn=fn or function(w)
     local pv=v
     if w then v=w end
     return pv
@@ -288,12 +309,26 @@ function s.init()
     reg(0),reg(0), -- x-y (gp)
     reg(0), --t (for conditions)
     reg(0,[[
-      execstate.cpubudget=execstate.cpubudget-1
-      return math.random(0,255)      
-    ]]), --r
-    reg(0,[[function(w)
-      
-    end]])
+      return function(w)
+        execstate.cpubudget=execstate.cpubudget-1
+        return math.random(0,255)      
+      end
+    ]]), --rnd
+    reg(0,[=[
+      return function(w)
+        if w then
+          mem[0x360+mem[0x35f]]=w 
+          mem[0x35f]=mem[0x35f]+1
+        else
+          if mem[0x35f]>0 then
+            mem[0x35f]=mem[0x35f]-1
+            return mem[0x360+mem[0x35f]]
+          else
+            return 0
+          end
+        end
+      end
+    ]=])--stack
   }
   s.cpubudget=0
   s.running=true
@@ -356,7 +391,11 @@ function s.writeinstructions(code)
   local strippedcode={}
   --1: go through, only put in instructions which are valid.
   for l=1,#code do
-     if isvalid(code[l],1) then table.insert(strippedcode,code[l]) end
+    if isvalid(code[l],1) then
+      table.insert(strippedcode,code[l])
+    else
+      print("invalid:",code[l])
+    end
   end
   --2: work out where all the labels are, now that non-functional lines have been excised from the code.
   s.labels={}

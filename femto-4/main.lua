@@ -10,6 +10,7 @@ local ffi = require 'ffi'
 -- 346-349: screen pallete
 -- 34a-34e: draw pallete
 -- 34f: draw colour
+-- 35f: stack pointer
 -- 360 - 3ff : stack
 -- 400 - 7ff : sprites [2 bpp, 4x4] = 192 sprites
 -- 800 - aff : screen [2bpp] = 64x48 screen
@@ -129,9 +130,19 @@ t=0
 code={}
 
 ([[
-lop:adc a +1
-plt a a a
-jmp lop
+adc a +2
+lop:adc a -1
+add rnd y stk
+tst a > y
+cjp lop
+
+deb stk
+deb stk
+deb stk
+deb stk
+deb stk
+deb stk
+
 ]]):gsub("[^\n]+",
 
 function(v)
