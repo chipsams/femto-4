@@ -16,6 +16,10 @@ local ffi = require 'ffi'
 -- b00 - fff : code, each operation is 2 bytes (although some may take more, e.g. string, which reads bytes until it hits 0, writing each bit to the specified position in gp memory.)
 
 fps_cap=31
+window={
+  h=320,
+  w=480
+}
 mouse={
   x=0,
   y=0,
@@ -83,9 +87,6 @@ function love.load()
     end
   ]]
 
-  love.window.setMode(64,48,{resizable=true})
-  
-
   require"graphics"
   print("graphics loaded")
   screen={
@@ -93,6 +94,11 @@ function love.load()
     y=0,
     scale=1,
   }
+
+  love.window.setMode(window.w,window.h,{resizable=true})
+  screen.scale=math.min(window.w*0.75,window.h)/48
+  screen.x=window.w/2-screen.scale*32
+  screen.y=window.h/2-screen.scale*24
 
   love.mouse.setVisible(false)
   cursor=love.image.newImageData("assets/cursor.png")
