@@ -153,7 +153,10 @@ function setline(x1,x2,y,c)
   end
 end
 
-
+--- sets a pixel in the spritesheet
+---@param x number
+---@param y number
+---@param c number
 function sset(x,y,c)
   if x>=0 and x<=63 and y>=0 and y<=47 then
     local i=math.floor(x/4+y*16)
@@ -168,18 +171,13 @@ function sget(x,y)
   return 0
 end
 
-function spr(sp,x,y,w,h)
-  local w=w or 1
-  local h=h or 1
-  local sx=sp%16*4
-  local sy=math.floor(sp/16)*4
-  for lx=0,w*4-1 do
-    for ly=0,h*4-1 do
-      pset(x+lx,y+ly,sget(sx+lx,sy+ly))
-    end  
-  end  
-end
-
+--- plots from the spritesheet to the screen.
+---@param sp number
+---@param x number
+---@param y number
+---@param w number (1)
+---@param h number (1)
+---@param scale number (1)
 function sspr(sp,x,y,w,h,scale)
   local w=w or 1
   local h=h or 1

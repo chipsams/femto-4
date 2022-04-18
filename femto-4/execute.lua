@@ -288,7 +288,7 @@ function s.init()
     reg(0),reg(0), -- x-y (gp)
     reg(0), --t (for conditions)
     reg(0,[[
-      execstate.cpubudget=execstate.cpubudget+1
+      execstate.cpubudget=execstate.cpubudget-1
       return math.random(0,255)      
     ]]), --r
     reg(0,[[function(w)
@@ -314,7 +314,7 @@ function s.update(dt)
     end
     rectfill(31,31,64,31+4*2,3)
     sc_write(tostring(i)..(s.running and "" or "h").."\n",32,32,2)
-    sc_write(tostring(s.registers[1]()))
+    sc_write(tostring(s.registers[1]()),nil,nil,nil)
   end
 end
 

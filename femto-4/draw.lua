@@ -77,7 +77,7 @@ function s.draw()
   do
     rect(38,18,55,35,3)
     rect(37,17,54,34,2)
-    spr(s.spritepagex+s.spritepagey*16,38,18,4,4)
+    sspr(s.spritepagex+s.spritepagey*16,38,18,4,4,1)
   end
   local spx,spy=s.sprite%16-s.spritepagex,math.floor(s.sprite/16)-s.spritepagey
   local w,h=s.spritescale,s.spritescale
