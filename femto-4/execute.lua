@@ -106,6 +106,37 @@ local function get_reg_names(reg,...)
   return
 end
 
+local stats={
+  {"btn_l",function() return love.keyboard.isDown("left") and 1 or 0 end},
+  {"btn_r",function() return love.keyboard.isDown("right") and 1 or 0 end},
+  {"btn_u",function() return love.keyboard.isDown("up") and 1 or 0 end},
+  {"btn_d",function() return love.keyboard.isDown("down") and 1 or 0 end},
+  {"btn_z",function() return love.keyboard.isDown("z") and 1 or 0 end},
+  {"btn_x",function() return love.keyboard.isDown("x") and 1 or 0 end},
+  {"btn_c",function() return love.keyboard.isDown("c") and 1 or 0 end},
+  {"mouse_x",function() return mouse.onscreen and mouse.x or -1 end},
+  {"mouse_y",function() return mouse.onscreen and mouse.y or -1 end},
+  {"mouse_lb",function() return mouse.lb and 1 or 0 end},
+  {"mouse_mb",function() return mouse.mb and 1 or 0 end},
+  {"mouse_rb",function() return mouse.rb and 1 or 0 end},
+  {"cpu",function() return s.cpubudget end},
+  {"stk_size",function() return mem[0x35f] end},
+  {"peek",function() if mem[0x35f]>0 then return mem[0x360+mem[0x35f]-1] else return 0 end end}
+}
+local stat_names={}
+local stat_funcs={}
+for i,stat in pairs(stats) do
+  stat_funcs[i]=stat[2]
+  local name=stat[1]
+  if type(name)=="string" then
+    stat_names[name]=i
+  else
+    for _,v in pairs(name) do
+      stat_names[v]=i
+    end
+  end
+end
+
 --[[format:
 {
   name,
@@ -230,6 +261,17 @@ local ops_definition={
     reg=get_reg_names(reg)
     if not reg then return false end
     return true,bitpack({5,3,8},id,reg,0)
+  end},
+  {{"stt","stat","get"},function(b1,b2)
+    s.cpubudget=s.cpubudget-10
+    local _,reg_mode,stat,t_reg=bitsplit(b1,b2,{5,1,7,3})
+    t_reg=get_regs(t_reg)
+    t_reg(stat_funcs[stat]())
+  end,function(id,line)
+    local _,stat,reg = unpack(tokenize(line))
+    if not reg or not get_reg_names(reg) then return false end
+    if not stat_names[stat] then return false end
+    return true,bitpack({5,1,7,3},id,0,stat_names[stat],get_reg_names(reg))
   end},
   {"flp",function()
     s.cpubudget=0

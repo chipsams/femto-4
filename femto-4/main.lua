@@ -122,7 +122,7 @@ function love.load()
   drawstate=require"draw"
 
   --change this to change the starting state
-  currentscene=drawstate
+  currentscene=codestate
 end
 
 t=0
@@ -131,19 +131,11 @@ t=0
 code={}
 
 ([[
-adc a +2
-lop:adc a -1
-add rnd y stk
-tst a > y
-cjp lop
 
-deb stk
-deb stk
-deb stk
-deb stk
-deb stk
-deb stk
-
+lop:stat btn_z a
+deb a
+flp
+jmp lop
 ]]):gsub("[^\n]+",
 
 function(v)
