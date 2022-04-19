@@ -342,7 +342,6 @@ local ops_definition={
   end
   },
   {{"pek","pok"},function(b1,b2)
-    s.pc=s.pc+2
     local b3,b4=mem[s.pc],mem[s.pc+1]
     local _,peek,t_reg,reg_mode,a_reg,_=bitsplit(b1,b2,{5,1,3,1,3,3})
     t_reg,a_reg=get_regs(t_reg,a_reg)
@@ -350,6 +349,7 @@ local ops_definition={
     if reg_mode==1 then
       adr=a_reg()
     else
+      s.pc=s.pc+2
       adr=bit.bor(bit.lshift(b3,8),b4)
     end
     if peek==1 then
