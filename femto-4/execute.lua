@@ -206,12 +206,17 @@ local ops_definition={
     local lx=memsigned[0x350]
     local ly=memsigned[0x351]
     --print(lx,ly,r1(),r2())
+    local w=math.abs(lx-r1())+1
+    local h=math.abs(ly-r2())+1
     if reset==0 then
       if op==0 then
+        s.cpubudget=s.cpubudget-w*h/64
         line(lx,ly,r1(),r2(),col)
       elseif op==1  then
+        s.cpubudget=s.cpubudget-(w+h)
         rect(lx,ly,r1(),r2(),col)
       elseif op==2  then
+        s.cpubudget=s.cpubudget-w*h/16
         rectfill(lx,ly,r1(),r2(),col)
       end
     end
