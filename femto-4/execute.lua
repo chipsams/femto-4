@@ -235,10 +235,10 @@ local ops_definition={
     local _,r1,override_col,override=bitsplit(b1,b2,{5,3,2,1,5})
     cls(override and override_col or regs[r1]())
   end,function(id,line)
-    local _,v=tokenize(line)
+    local _,v=unpack(tokenize(line))
     if not v then return false end
-    if reg_names[v] then return true,bitpack({5,3,8},id,reg_names[v],0) end
-    if tonumber(v)  then return true,bitpack({5,3,2,1,5},id,0,tonumber(v),1,0) end
+    if reg_names[v] then print("is reg") return true,bitpack({5,3,8},id,reg_names[v],0) end
+    if tonumber(v)  then print("is num") return true,bitpack({5,3,2,1,5},id,0,tonumber(v),1,0) end
     return false
   end},
   {{"jmp","cjp"},function(b1,b2)
@@ -367,7 +367,7 @@ local function reg(initv,fn)
   local v=initv
   local fn=fn
   if fn then
-    local loaded_fn,err=loadstring(fn)
+    local loaded_fn,err=load(fn,nil,nil,{s=s,math=math,mem=mem})
     if not loaded_fn then
       print("error loading register:",err)
     else
@@ -424,9 +424,9 @@ function s.update(dt)
       s.cpubudget=s.cpubudget-1
       s.pc=s.pc+2
     end
-    rectfill(31,31,64,31+4*2,3)
-    sc_write(tostring(i)..(s.running and "" or "h").."\n",32,32,2)
-    sc_write(tostring(s.registers[1]()),nil,nil,nil)
+    --rectfill(31,31,64,31+4*2,3)
+    --sc_write(tostring(i)..(s.running and "" or "h").."\n",32,32,2)
+    --sc_write(tostring(s.registers[1]()),nil,nil,nil)
   end
 end
 

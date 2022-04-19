@@ -36,7 +36,7 @@ mouse={
 }
 
 --because love.run doesn't seem to work over there?
-if love.system.getOS()~="web" then
+if love.system.getOS()~="Web" then
   function love.run()
     if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
     
@@ -123,7 +123,7 @@ function love.load()
   cursor=love.image.newImageData("assets/cursor.png")
   pal=love.image.newImageData("assets/pallete.png")
   for l=0,3 do
-    mem[0x346+l]=l+16  --init screen pallete
+    mem[0x346+l]=l  --init screen pallete
     mem[0x34a+l]=l  --init draw pallete
   end
 
@@ -149,13 +149,16 @@ t=0
 code={}
 
 ([[
-lne x y 2 reset
-adc x +40
-adc y +20
-lne x y 2
-adc x -20
-adc y -10
-rct x y 1
+adc y +127
+lop:lne rnd rnd 2
+adc x +1
+flp
+tst x < y
+deb t
+cjp lop
+sub x x x
+cls 0
+jmp lop
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.
