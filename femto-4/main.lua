@@ -1,7 +1,14 @@
 
+local ffi
 
-local bit = require 'bit' 
-local ffi = require 'ffi'
+print(love.system.getOS())
+if love.system.getOS()=="Web" then
+  bit=(require"bitreplace").bit
+else
+  bit = require 'bit'
+  ffi = require 'ffi'
+end
+print(bit)
 
 --   0 - 33f : general purpouse
 -- 340 - 35f : poke flags/memory map stuff (e.g. button state)
@@ -28,45 +35,48 @@ mouse={
   onscreen=false
 }
 
-function love.run()
-  if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
-
-  -- We don't want the first frame's dt to include time taken by love.load.
-  if love.timer then love.timer.step() end
-
-  local dt = 0
-
-  -- Main loop time.
-  return function()
-    -- Process events.
-    if love.event then
-      love.event.pump()
-      for name, a,b,c,d,e,f in love.event.poll() do
-        if name == "quit" then
-          if not love.quit or not love.quit() then
-            return a or 0
+--because love.run doesn't seem to work over there?
+if love.system.getOS()~="web" then
+  function love.run()
+    if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
+    
+    -- We don't want the first frame's dt to include time taken by love.load.
+    if love.timer then love.timer.step() end
+    
+    local dt = 0
+    
+    -- Main loop time.
+    return function()
+      -- Process events.
+      if love.event then
+        love.event.pump()
+        for name, a,b,c,d,e,f in love.event.poll() do
+          if name == "quit" then
+            if not love.quit or not love.quit() then
+              return a or 0
+            end
           end
+          love.handlers[name](a,b,c,d,e,f)
         end
-        love.handlers[name](a,b,c,d,e,f)
       end
+
+      -- Update dt, as we'll be passing it to update
+      if love.timer then dt = love.timer.step() end
+      
+      -- Call update and draw
+      if love.update then love.update(dt) end -- will pass 0 if love.timer is disabled
+
+      if love.graphics and love.graphics.isActive() then
+        love.graphics.origin()
+        love.graphics.clear(love.graphics.getBackgroundColor())
+
+        if love.draw then love.draw() end
+
+        love.graphics.present()
+      end
+
+      if love.timer then love.timer.sleep(1/fps_cap) end
     end
-
-    -- Update dt, as we'll be passing it to update
-    if love.timer then dt = love.timer.step() end
-
-    -- Call update and draw
-    if love.update then love.update(dt) end -- will pass 0 if love.timer is disabled
-
-    if love.graphics and love.graphics.isActive() then
-      love.graphics.origin()
-      love.graphics.clear(love.graphics.getBackgroundColor())
-
-      if love.draw then love.draw() end
-
-      love.graphics.present()
-    end
-
-    if love.timer then love.timer.sleep(1/fps_cap) end
   end
 end
 
@@ -146,12 +156,9 @@ lne x y 2
 adc x -20
 adc y -10
 rct x y 1
-
-]]):gsub("[^\n]+",
-
-function(v)
+]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
-end)
+end)--pre-populate the code area.
 
 function love.resize(w,h)
   screen.scale=math.min(w*0.75,h)/48

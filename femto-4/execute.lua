@@ -365,16 +365,15 @@ end
 
 local function reg(initv,fn)
   local v=initv
-  local loaded_fn
+  local fn=fn
   if fn then
-    local loaded_fn,err=load(fn,nil,nil,{v=v,math=math,execstate=s,mem=mem,print=print})
-    if not loaded_fn then print("error loading register:",err) end
-    local success,error_or_fn=pcall(loaded_fn)
-    if not success then 
-      print("execution error:",error_or_fn)
+    local loaded_fn,err=loadstring(fn)
+    if not loaded_fn then
+      print("error loading register:",err)
     else
-      fn=error_or_fn
+      fn=loaded_fn()
     end
+    
   end
   fn=fn or function(w)
     local pv=v
@@ -385,34 +384,30 @@ local function reg(initv,fn)
 end
 
 function s.init()
+  s.cpubudget=0
   
   s.registers={
     reg(0),reg(0),reg(0), -- a-c (gp)
     reg(0),reg(0), -- x-y (gp)
     reg(0), --t (for conditions)
-    reg(0,[[
-      return function(w)
-        execstate.cpubudget=execstate.cpubudget-1
-        return math.random(0,255)      
-      end
-    ]]), --rnd
-    reg(0,[=[
-      return function(w)
-        if w then
-          mem[0x360+mem[0x35f]]=w 
-          mem[0x35f]=mem[0x35f]+1
+    reg(0,[=[return function(w)
+      s.cpubudget=s.cpubudget-1
+      return math.random(0,255)      
+    end]=]), --rnd
+    reg(0,[=[return function(w)
+      if w then
+        mem[0x360+mem[0x35f]]=w 
+        mem[0x35f]=mem[0x35f]+1
+      else
+        if mem[0x35f]>0 then
+          mem[0x35f]=mem[0x35f]-1
+          return mem[0x360+mem[0x35f]]
         else
-          if mem[0x35f]>0 then
-            mem[0x35f]=mem[0x35f]-1
-            return mem[0x360+mem[0x35f]]
-          else
-            return 0
-          end
+          return 0
         end
       end
-    ]=])--stack
+    end]=])--stack
   }
-  s.cpubudget=0
   s.running=true
   s.pc=0xb00
   s.labels={}
