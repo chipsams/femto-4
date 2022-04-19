@@ -109,8 +109,8 @@ function sc_write(st,x,y,c)
   mem[0x34f]=c
   local linestart=x or 1
   if not (c or y) then c,x=x,nil end
-  x=x or mem[0x344]
-  y=y or mem[0x345]
+  x=x or memsigned[0x344]
+  y=y or memsigned[0x345]
   x,y,c=flr(x,y,c)
 
   st=tostring(st == nil and "" or st)
@@ -130,8 +130,8 @@ function sc_write(st,x,y,c)
       y=y+4
     end
   end
-  mem[0x344]=x
-  mem[0x345]=y
+  memsigned[0x344]=x
+  memsigned[0x345]=y
 end
 
 --- fills a horizontal line with one color

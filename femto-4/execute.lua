@@ -121,7 +121,11 @@ local stats={
   {"mouse_rb",function() return mouse.rb and 1 or 0 end},
   {"cpu",function() return s.cpubudget end},
   {"stk_size",function() return mem[0x35f] end},
-  {"peek",function() if mem[0x35f]>0 then return mem[0x360+mem[0x35f]-1] else return 0 end end}
+  {"stk_peek",function() if mem[0x35f]>0 then return mem[0x360+mem[0x35f]-1] else return 0 end end},
+  {"last_x",function() return memsigned[0x350] end},
+  {"last_y",function() return memsigned[0x351] end},
+  {"print_x",function() return memsigned[0x344] end},
+  {"print_y",function() return memsigned[0x345] end},
 }
 local stat_names={}
 local stat_funcs={}
@@ -194,6 +198,32 @@ local ops_definition={
     else
       return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,0,0)
     end
+  end},
+  --line, rect, filled rect
+  {{"lne","rct","frc"},function(b1,b2)
+    local _,r1,r2,op,reset,col=bitsplit(b1,b2,{5,3,3,2,1,2})
+    local r1,r2=get_regs(r1,r2)
+    local lx=memsigned[0x350]
+    local ly=memsigned[0x351]
+    --print(lx,ly,r1(),r2())
+    if reset==0 then
+      if op==0 then
+        line(lx,ly,r1(),r2(),col)
+      elseif op==1  then
+        rect(lx,ly,r1(),r2(),col)
+      elseif op==2  then
+        rectfill(lx,ly,r1(),r2(),col)
+      end
+    end
+    memsigned[0x350]=r1()
+    memsigned[0x351]=r2()
+  end,function(id,line)
+    --lne x y 2 first
+    local opname,r1,r2,colour,first=unpack(tokenize(line))
+    local r1,r2=get_reg_names(r1,r2)
+    if not(r1 and r2) then return false end
+    if not tonumber(colour) then return false end
+    return true,bitpack({5,3,3,2,1,2},id,r1,r2,({lne=0,rct=1,frc=2})[opname],(first=="reset" or first=="start") and 1 or 0,tonumber(colour))
   end},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100

@@ -10,6 +10,7 @@ local ffi = require 'ffi'
 -- 346-349: screen pallete
 -- 34a-34e: draw pallete
 -- 34f: draw colour
+-- 350,351: last draw x,y. used for line & rect
 -- 35f: stack pointer
 -- 360 - 3ff : stack
 -- 400 - 7ff : sprites [2 bpp, 4x4] = 192 sprites
@@ -74,19 +75,10 @@ function love.load()
   screenpos=0x800
   spritepos=0x400
   base_mem = love.data.newByteData(2 ^ 12)
+  --these point to the same data, but one sets/gets in the range 0 to 255 and the other sets/gets in the range -128 to 127.
   mem=ffi.cast("uint8_t*", base_mem:getFFIPointer())
-  --the mem is initialized to zeros anyway!
-  --[[
-    for l=0,0xfff do -- 4096 byte array
-      mem[l]=0
-    end
-  ]]
-  --[[
-    for l=0x800,0xaff do -- init screen
-      local v=0
-      mem[l]=v
-    end
-  ]]
+  memsigned=ffi.cast("int8_t*", base_mem:getFFIPointer())
+
 
   require"graphics"
   print("graphics loaded")
@@ -106,7 +98,7 @@ function love.load()
   cursor=love.image.newImageData("assets/cursor.png")
   pal=love.image.newImageData("assets/pallete.png")
   for l=0,3 do
-    mem[0x346+l]=l  --init screen pallete
+    mem[0x346+l]=l+16  --init screen pallete
     mem[0x34a+l]=l  --init draw pallete
   end
 
@@ -132,9 +124,14 @@ t=0
 code={}
 
 ([[
+lne x y 2 reset
+adc x +40
+adc y +20
+lne x y 2
+adc x -20
+adc y -10
+rct x y 1
 
-adc x +1
-plt x x 2
 ]]):gsub("[^\n]+",
 
 function(v)
