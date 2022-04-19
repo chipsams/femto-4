@@ -21,7 +21,7 @@ function bitpack(splitsizes,...)
   for l=1,#splitsizes do
     v=bit.bor(bit.lshift(v,splitsizes[l]),bit.band(vals[l],pow2[splitsizes[l]]))
   end
-  return bit.band(bit.rshift(v,8),255),bit.band(v,255)
+  return {bit.band(bit.rshift(v,8),255),bit.band(v,255)}
 end
 
 local ops={
@@ -41,12 +41,36 @@ local ops={
   "<",
 }
 
+function better_tonumber(v)
+  if type(v)=="number" then return v end
+  if type(v)~="string" then v=tostring(v) end
+  local _,_,as_hex=v:find("0x([%dabcdef]+)")
+  if as_hex then return tonumber(as_hex,16) end
+  local _,_,as_bin=v:find("0b([01]+)")
+  if as_bin then return tonumber(as_bin,2) end
+  local _,_,as_qat=v:find("0q([0123]+)")
+  if as_qat then return tonumber(as_qat,4) end
+  return tonumber(v)
+end
+
 function tokenize(st)
   local tokens={}
   local k=1
   while k<=#st do
     local ch=st:sub(k,k)
-    if st:find("%d",k)==k then
+    if st:find("0q[0123]",k)==k then
+      local start=k
+      k=st:find("[^0123]",k+2)
+      table.insert(tokens,st:sub(start,k))
+    elseif st:find("0b[01]",k)==k then
+      local start=k
+      k=st:find("[^01]",k+2)
+      table.insert(tokens,st:sub(start,k))
+    elseif st:find("0x%d",k)==k then
+      local start=k
+      k=st:find("[^%dabcdef]",k+2)
+      table.insert(tokens,st:sub(start,k))
+    elseif st:find("%d",k)==k then
       local start=k
       k=st:find("%D",k+1) or #st+1
       table.insert(tokens,st:sub(start,k-1))
@@ -153,7 +177,7 @@ local ops_definition={
     s.cpubudget=0
     s.running=false
   end,function()
-    return 0,0
+    return true,{0,0}
   end},
   {{"add","sub"},function(b1,b2)--add
     local _,r1,r2,r3,negate_r2,absolute=bitsplit(b1,b2,{5,3,3,3,1,1})
@@ -165,8 +189,7 @@ local ops_definition={
     local opname,r1,r2,r3=unpack(tokenize(line))
     r1,r2,r3=get_reg_names(r1,r2,r3)
     if not (r1 and r2 and r3) then return false end
-    local b1,b2=bitpack({5,3,3,3,1,1},id,r1,r2,r3,opname=="sub" and 1 or 0,0)
-    return true,b1,b2
+    return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,opname=="sub" and 1 or 0,0)
   end},
   {"adc",function(b1,b2)--add constant
     local _,t1,negative,value=bitsplit(b1,b2,{5,3,1,7})
@@ -176,12 +199,11 @@ local ops_definition={
     r1(result)
   end,function(id,line)
     local _,r1,sign,value=unpack(tokenize(line))
-    --print('"'..(tonumber(value) or "?")..'"')
+    --print('"'..(better_tonumber(value) or "?")..'"')
     if not (sign=="-" or sign=="+") then print"no sign" return false end
     if not reg_names[r1] then print"no reg" return false end
-    if not tonumber(value) then print"not a number" return false end
-    local b1,b2=bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,tonumber(value))
-    return true,b1,b2
+    if not better_tonumber(value) then print"not a number" return false end
+    return true,bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,better_tonumber(value))
   end},
   {"plt",function(b1,b2)--pset
     local _,r1,r2,or3,_,literal=bitsplit(b1,b2,{5,3,3,3,1,1})
@@ -190,11 +212,11 @@ local ops_definition={
   end,function(id,line)
     local _,r1,r2,or3=unpack(tokenize(line))
     local r1,r2,r3=get_reg_names(r1,r2,or3)
-    print(tonumber(or3) and "is number" or "not number")
+    print(better_tonumber(or3) and "is number" or "not number")
     if not (r1 and r2) then return false end
-    if not r3 and not tonumber(or3) then return false end
-    if tonumber(or3) then
-      return true,bitpack({5,3,3,3,1,1},id,r1,r2,tonumber(or3),0,1)
+    if not r3 and not better_tonumber(or3) then return false end
+    if better_tonumber(or3) then
+      return true,bitpack({5,3,3,3,1,1},id,r1,r2,better_tonumber(or3),0,1)
     else
       return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,0,0)
     end
@@ -227,8 +249,8 @@ local ops_definition={
     local opname,r1,r2,colour,first=unpack(tokenize(line))
     local r1,r2=get_reg_names(r1,r2)
     if not(r1 and r2) then return false end
-    if not tonumber(colour) then return false end
-    return true,bitpack({5,3,3,2,1,2},id,r1,r2,({lne=0,rct=1,frc=2})[opname],(first=="reset" or first=="start") and 1 or 0,tonumber(colour))
+    if not better_tonumber(colour) then return false end
+    return true,bitpack({5,3,3,2,1,2},id,r1,r2,({lne=0,rct=1,frc=2})[opname],(first=="reset" or first=="start") and 1 or 0,better_tonumber(colour))
   end},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100
@@ -238,7 +260,7 @@ local ops_definition={
     local _,v=unpack(tokenize(line))
     if not v then return false end
     if reg_names[v] then print("is reg") return true,bitpack({5,3,8},id,reg_names[v],0) end
-    if tonumber(v)  then print("is num") return true,bitpack({5,3,2,1,5},id,0,tonumber(v),1,0) end
+    if better_tonumber(v)  then print("is num") return true,bitpack({5,3,2,1,5},id,0,better_tonumber(v),1,0) end
     return false
   end},
   {{"jmp","cjp"},function(b1,b2)
@@ -318,7 +340,44 @@ local ops_definition={
   end,function(id,line)
     return true,bitpack({5,11},id,0)
   end
-  }
+  },
+  {{"pek","pok"},function(b1,b2)
+    s.pc=s.pc+2
+    local b3,b4=mem[s.pc],mem[s.pc+1]
+    local _,peek,t_reg,reg_mode,a_reg,_=bitsplit(b1,b2,{5,1,3,1,3,3})
+    t_reg,a_reg=get_regs(t_reg,a_reg)
+    local adr
+    if reg_mode==1 then
+      adr=a_reg()
+    else
+      adr=bit.bor(bit.lshift(b3,8),b4)
+    end
+    if peek==1 then
+      t_reg(mem[adr])
+    else
+      mem[adr]=t_reg()
+    end
+  end,function(id,line)
+    --bit format: 
+    --     |peek/poke|target register|register address|unused|     address
+    --xxxxx|x        |xxx            |x xxx           |xxx   |xxxx xxxxxxxxxxxx
+    local op,adr,reg_name=unpack(tokenize(line))
+    --print("adr:",adr)
+    local adr_reg,reg=get_reg_names(adr,reg_name)
+    local num_adr=better_tonumber(adr)
+    if adr_reg and reg then
+      local bytes=bitpack({5,1,3,1,3, 3},id,op=="pek" and 1 or 0,reg,1,adr_reg,0)
+      return true,bytes
+    elseif num_adr and reg then
+      local bytes=bitpack({5,1,3,1,3, 3},id,op=="pek" and 1 or 0,reg,0,0,0)
+      table.insert(bytes,bit.rshift(num_adr,8))
+      table.insert(bytes,bit.band(num_adr,0xff))
+      return true,bytes
+    end
+    return false,{0,0}
+  end
+
+  },
 }
 local ops={}
 local op_parse={}
@@ -385,7 +444,8 @@ end
 
 function s.init()
   s.cpubudget=0
-  
+  mem[0x35f]=0
+
   s.registers={
     reg(0),reg(0),reg(0), -- a-c (gp)
     reg(0),reg(0), -- x-y (gp)
@@ -438,17 +498,21 @@ function s.writeinstruction(line)
   line=line:gsub("[%a_]*:","")
   local op=line:gsub("^[%A]*(%a+).*","%1")
   --print(op)
-  local valid,b1,b2=false,0,0
+  local valid,bytes=false,{}
   if op_parse[op_names[op]] then
     --print("parsing: ",op)
-    valid,b1,b2=op_parse[op_names[op]](op_names[op],line)
+    valid,bytes=op_parse[op_names[op]](op_names[op],line)
+    bytes=bytes or {}
   end
   --print(line,valid,b1,b2)
+  print(line)
+  print("bytecount:",#bytes)
   if valid then
-    mem[s.writei  ]=b1
-    mem[s.writei+1]=b2
+    for l=1,#bytes do
+      mem[s.writei+l-1]=bytes[l]
+    end
+    s.writei=s.writei+#bytes
     --debugbitsplit(b1,b2,{5,3,1,7})
-    s.writei=s.writei+2
   else
   end
 end
@@ -457,14 +521,15 @@ function isvalid(chk_line,stage)
   local line=chk_line:gsub("[%a_]*:","")
   if not chk_line:find("%S") then return false end
   local op=line:gsub("^[%A]*(%a+).*","%1")
-  local valid,b1,b2=false,0,0
+  local valid,bytes=false,{}
   if op_parse[op_names[op]] then
-    valid,b1,b2=op_parse[op_names[op]](op_names[op],line,stage)
+    valid,bytes=op_parse[op_names[op]](op_names[op],line,stage)
   end
   return valid
 end
 
 function s.writeinstructions(code)
+  s.writei=0xb00
   local strippedcode={}
   --1: go through, only put in instructions which are valid.
   for l=1,#code do
@@ -480,7 +545,7 @@ function s.writeinstructions(code)
   for l=1,#strippedcode do
     local label=strippedcode[l]:gsub("([%a_]*:).*","%1")
     if #label>0 then
-      s.labels[label]=l-1 
+      s.labels[label]=(s.writei-0xb00)/2
     end
   end
   --3: write then all into memory.

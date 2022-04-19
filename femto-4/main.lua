@@ -10,7 +10,8 @@ else
 end
 print(bit)
 
---   0 - 33f : general purpouse
+-- 000 - 0ff : aloc memory
+-- 100 - 33f : general purpouse
 -- 340 - 35f : poke flags/memory map stuff (e.g. button state)
 -- 340-343: button bitmasks (341-343 likely unused for a while, multiple controlers sounds annoying to implement)
 -- 344,345: print cursor
@@ -114,9 +115,12 @@ function love.load()
   }
 
   love.window.setMode(window.w,window.h,{resizable=true})
-  screen.scale=math.min(window.w*0.75,window.h)/48
-  screen.x=window.w/2-screen.scale*32
-  screen.y=window.h/2-screen.scale*24
+  love.resize(window.w,window.h)
+  --[[
+    screen.scale=math.min(window.w*0.75,window.h)/48
+    screen.x=window.w/2-screen.scale*32
+    screen.y=window.h/2-screen.scale*24
+  --]]
 
   love.mouse.setVisible(false)
   page_select_cursor_png=love.image.newImageData("assets/page_select_cursor.png")
@@ -128,10 +132,13 @@ function love.load()
   end
 
   mem[0x346]=0
-  
+
+  love.window.setIcon(love.image.newImageData("assets/logo.png"))
+  love.window.setTitle("femto-4")
+
   font=love.image.newImageData("assets/font.png")
   
-  renderdata=love.image.newImageData(64,48)
+  renderdata=love.image.newImageData(64,64)
   renderscreen=love.graphics.newImage(renderdata)
   
   execstate=require"execute"
@@ -149,24 +156,21 @@ t=0
 code={}
 
 ([[
-adc y +127
-lop:lne rnd rnd 2
 adc x +1
-flp
-tst x < y
-deb t
-cjp lop
-sub x x x
-cls 0
-jmp lop
+add x x stk
+add x x stk
+add x x stk
+pek 1 x
+pek 0x35f x
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.
 
 function love.resize(w,h)
-  screen.scale=math.min(w*0.75,h)/48
+  --screen.scale=math.min(w*0.75,h)/48
+  screen.scale=math.min(w,h)/64
   screen.x=w/2-screen.scale*32
-  screen.y=h/2-screen.scale*24
+  screen.y=h/2-screen.scale*32
 end
 
 function love.update(dt)
@@ -193,7 +197,7 @@ function love.draw()
   
   for l=0,3 do
     local palindex=mem[0x346+l]
-    r[l],g[l],b[l]=pal:getPixel(palindex%4,math.floor(palindex/4))
+    r[l],g[l],b[l]=pal:getPixel(palindex%16,math.floor(palindex/16))
   end
   renderdata:mapPixel(function(x,y)
     local v=bit.rshift(mem[math.floor(x/4+y*16)+screenpos],x%4*2)%4
