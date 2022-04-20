@@ -23,7 +23,7 @@ function bitpack(splitsizes,...)
     bitcount=bitcount+splitsizes[l]
     v=bit.bor(bit.lshift(v,splitsizes[l]),bit.band(vals[l],pow2[splitsizes[l]]))
   end
-  print(bitcount)
+  --print(bitcount)
   local bytes={}
   for l=1,bitcount,8 do
     table.insert(bytes,1,bit.band(v,255))
@@ -220,7 +220,7 @@ local ops_definition={
   end,function(id,line)
     local _,r1,r2,or3=unpack(tokenize(line))
     local r1,r2,r3=get_reg_names(r1,r2,or3)
-    print(better_tonumber(or3) and "is number" or "not number")
+    --print(better_tonumber(or3) and "is number" or "not number")
     if not (r1 and r2) then return false end
     if not r3 and not better_tonumber(or3) then return false end
     if better_tonumber(or3) then
@@ -239,14 +239,13 @@ local ops_definition={
     local w=math.abs(lx-r1())+1
     local h=math.abs(ly-r2())+1
     local col=r3()
-    print("col:",col)
-    print("op:",op)
+    --print("col:",col)
+    --print("op:",op)
     if op==0 then
       s.cpubudget=s.cpubudget-w*h/64
       line(lx,ly,r1(),r2(),col)
     elseif op==1  then
       s.cpubudget=s.cpubudget-(w+h)
-      print("rect",lx,ly,r1(),r2(),col)
       --rect(3,8,6,16,2)
       rect(lx,ly,r1(),r2(),col)
     elseif op==2  then
@@ -258,9 +257,7 @@ local ops_definition={
   end,function(id,line)
     local ops={lne=0,rct=1,frc=2,rst=3}
     --lne x y 2
-    print(line)
     local opname,r1,r2,r3=unpack(tokenize(line))
-    print(opname)
     local r1,r2,r3=get_reg_names(r1,r2,r3)
     if not ops[opname] then return false end
     if not(r1 and r2 and r3) then return false end
@@ -288,13 +285,13 @@ local ops_definition={
     local x,y,r,c=get_reg_names(x,y,r,col)
     if not(x and y and r and (c or better_tonumber(col))) then return false end
     --xxxxx xxx|xxx xxx xx|x x x .....
-    print("filled?:",op=="fcc" and 1 or 0)
-    print("register?:",c and 1 or 0)
+    --print("filled?:",op=="fcc" and 1 or 0)
+    --print("register?:",c and 1 or 0)
     local bytes=bitpack({5, 3,3,3,3, 1, 1, 5},id,
     x,y,r,c or better_tonumber(col),
     op=="fcc" and 1 or 0,
     c and 1 or 0, 0)
-    for _,byte in ipairs(bytes) do print(basen(byte,2,8)) end
+    --for _,byte in ipairs(bytes) do print(basen(byte,2,8)) end
     return true,bytes
   end},
   {"cls",function(b1,b2)
@@ -309,7 +306,6 @@ local ops_definition={
     return false
   end},
   {{"jmp","cjp"},function(b1,b2)
-    s.cpubudget=s.cpubudget+0.5 --now this op only costs half a cycle!
     local b3=mem[s.pc+2]
     s.pc=s.pc+1
     local op,cond,callstack,_=bitsplit(b1,b2,{5,1,1,1,8})
@@ -317,11 +313,11 @@ local ops_definition={
 
     local t=get_regs(reg_names.t)
     if cond==0 or t()>0 then
-      print(basen(jumpadr,16))
+      --print(basen(jumpadr,16))
       s.pc=jumpadr-2
     end
   end,function(id,line,stage)
-    print("jmp",line,stage)
+    --print("jmp",line,stage)
     local op,label=unpack(tokenize(line))
     if stage==1 or stage==2 then
       return true,{0,0,0}
@@ -466,7 +462,7 @@ local function parsecommand(b1,b2)
   local i=bitsplit(b1,b2,{5,11})
   if ops[i] then
     local name=ops_definition[i][1]
-    print("parsed:",type(name)=="table" and name[1] or name)
+    --print("parsed:",type(name)=="table" and name[1] or name)
     ops[i](b1,b2)
   end
   
@@ -558,8 +554,8 @@ function s.writeinstruction(line,stage)
     bytes=bytes or {}
   end
   --print(line,valid,b1,b2)
-  print(line)
-  print("bytecount:",#bytes)
+  --print(line)
+  --print("bytecount:",#bytes)
   if valid then
     for l=1,#bytes do
       mem[s.writei+l-1]=bytes[l]
@@ -598,10 +594,10 @@ function s.writeinstructions(code)
   for l=1,#strippedcode do
     local label,occurences=strippedcode[l]:gsub("[^%a_]*([%a_]*:).*","%1")
     
-    print("instruction "..l..":",basen(s.writei,16))
+    --print("instruction "..l..":",basen(s.writei,16))
     if occurences>0 then
       s.labels[label]=s.writei
-      print("label "..label..":",basen(s.writei,16))
+      --print("label "..label..":",basen(s.writei,16))
     end
     s.writeinstruction(strippedcode[l],2)
   end
