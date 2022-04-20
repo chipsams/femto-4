@@ -270,33 +270,41 @@ function memset(addr,span,value)
 end
 
 function circ(x,y,r,c)
-  x,y=x+.5,y+.5
-  local r2=r*r
-  for oy=0,r do
-    local ox=math.sqrt(r2-oy*oy)
-    if oy>ox+.68 then break end
-
-    pset(x+ox,y+oy,c)
-    pset(x+oy,y+ox,c)
-    pset(x+oy,y-ox,c)
-    pset(x+ox,y-oy,c)
-    pset(x-ox,y+oy,c)
-    pset(x-oy,y+ox,c)
-    pset(x-oy,y-ox,c)
-    pset(x-ox,y-oy,c)
+  x,y=math.floor(x)+.5,math.floor(y)+.5
+  r=math.floor(r+.5)
+  local dx, dy, err = r, 0, 1-r
+  while dx >= dy do
+    pset(x+dx, y+dy, c)
+    pset(x-dx, y+dy, c)
+    pset(x+dx, y-dy, c)
+    pset(x-dx, y-dy, c)
+    pset(x+dy, y+dx, c)
+    pset(x-dy, y+dx, c)
+    pset(x+dy, y-dx, c)
+    pset(x-dy, y-dx, c)
+    dy = dy + 1
+    if err < 0 then
+      err = err + 2 * dy + 1
+    else
+      dx, err = dx-1, err + 2 * (dy - dx) + 1
+    end
   end
 end
 
 function circfill(x,y,r,c)
-  x,y=x+.5,y+.5
-  local r2=r*r
-  for oy=0,r do
-    local ox=math.sqrt(r2-oy*oy)
-    if oy>ox+.68 then break end
-
-    setline(x-ox,x+ox,y+oy,c)
-    setline(x-oy,x+oy,y+ox,c)
-    setline(x-oy,x+oy,y-ox,c)
-    setline(x-ox,x+ox,y-oy,c)
+  x,y=math.floor(x)+.5,math.floor(y)+.5
+  r=math.floor(r+.5)
+  local dx, dy, err = r, 0, 1-r
+  while dx >= dy do
+    setline(x-dx,x+dx,y+dy,c)
+    setline(x-dy,x+dy,y+dx,c)
+    setline(x-dy,x+dy,y-dx,c)
+    setline(x-dx,x+dx,y-dy,c)
+    dy = dy + 1
+    if err < 0 then
+      err = err + 2 * dy + 1
+    else
+      dx, err = dx-1, err + 2 * (dy - dx) + 1
+    end
   end
 end

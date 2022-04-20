@@ -157,13 +157,10 @@ t=0
 code={}
 
 ([[
-adc x +3
-adc y +8
-adc c +2
-rst x y c
-adc x +3
-adc y +8
-rct x y c
+skp:flp
+adc b +1
+plt b b b
+jmp skp
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.

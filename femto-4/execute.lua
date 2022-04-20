@@ -18,10 +18,18 @@ end
 function bitpack(splitsizes,...)
   local v=0
   local vals={...}
+  local bitcount=0
   for l=1,#splitsizes do
+    bitcount=bitcount+splitsizes[l]
     v=bit.bor(bit.lshift(v,splitsizes[l]),bit.band(vals[l],pow2[splitsizes[l]]))
   end
-  return {bit.band(bit.rshift(v,8),255),bit.band(v,255)}
+  print(bitcount)
+  local bytes={}
+  for l=1,bitcount,8 do
+    table.insert(bytes,1,bit.band(v,255))
+    v=bit.rshift(v,8)
+  end
+  return bytes
 end
 
 local ops={
@@ -208,7 +216,7 @@ local ops_definition={
   {"plt",function(b1,b2)--pset
     local _,r1,r2,or3,_,literal=bitsplit(b1,b2,{5,3,3,3,1,1})
     local r1,r2,r3=get_regs(r1,r2,or3)
-    pset(r1(),r2(),literal and or3 or r3())
+    pset(r1(),r2(),literal==1 and or3 or r3())
   end,function(id,line)
     local _,r1,r2,or3=unpack(tokenize(line))
     local r1,r2,r3=get_reg_names(r1,r2,or3)
@@ -258,6 +266,37 @@ local ops_definition={
     if not(r1 and r2 and r3) then return false end
     return true,bitpack({5,3,3,2,3},id,r1,r2,ops[opname],r3)
   end},
+  {{"crc","fcc"},function(b1,b2)
+    local b3=mem[s.pc+2]
+    s.pc=s.pc+1
+    --print(b1,b2,b3)
+    local _,x,y,r,_=bitsplit(b1,b2,{5,3,3,3,2})
+    local _,col,filled,reg_col,_=bitsplit(b2,b3,{6,3,1,1,5})
+    --print(col,filled,reg_col)
+    local x,y,r,c=get_regs(x,y,r,reg_col==1 and col)
+    c=c and c() or col
+    local args={x(),y(),r(),c}
+    if filled==1 then
+      s.cpubudget=s.cpubudget+r()*r()*2+20
+      circfill(unpack(args))
+    else
+      s.cpubudget=s.cpubudget+r()*r()/8+10
+      circ(unpack(args))
+    end
+  end,function(id,line)
+    local op,x,y,r,col=unpack(tokenize(line))
+    local x,y,r,c=get_reg_names(x,y,r,col)
+    if not(x and y and r and (c or better_tonumber(col))) then return false end
+    --xxxxx xxx|xxx xxx xx|x x x .....
+    print("filled?:",op=="fcc" and 1 or 0)
+    print("register?:",c and 1 or 0)
+    local bytes=bitpack({5, 3,3,3,3, 1, 1, 5},id,
+    x,y,r,c or better_tonumber(col),
+    op=="fcc" and 1 or 0,
+    c and 1 or 0, 0)
+    for _,byte in ipairs(bytes) do print(basen(byte,2,8)) end
+    return true,bytes
+  end},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100
     local _,r1,override_col,override=bitsplit(b1,b2,{5,3,2,1,5})
@@ -271,21 +310,26 @@ local ops_definition={
   end},
   {{"jmp","cjp"},function(b1,b2)
     s.cpubudget=s.cpubudget+0.5 --now this op only costs half a cycle!
-    local op,cond,callstack,jumpadr=bitsplit(b1,b2,{5,1,1,9})
+    local b3=mem[s.pc+2]
+    s.pc=s.pc+1
+    local op,cond,callstack,_=bitsplit(b1,b2,{5,1,1,1,8})
+    local jumpadr=bitsplit(b2,b3,{16})
+
     local t=get_regs(reg_names.t)
     if cond==0 or t()>0 then
-      s.pc=0xb00+jumpadr*2-2
+      print(basen(jumpadr,16))
+      s.pc=jumpadr-2
     end
   end,function(id,line,stage)
     print("jmp",line,stage)
     local op,label=unpack(tokenize(line))
-    if stage==1 then
-      return true,0,0
+    if stage==1 or stage==2 then
+      return true,{0,0,0}
     end
     if not label then return false end
     label=label..":"
     if not s.labels[label] then return false end
-    return true,bitpack({5,1,1,9},id,op=="cjp" and 1 or 0,0,s.labels[label])
+    return true,bitpack({5,1,1,1,8+8},id,op=="cjp" and 1 or 0,0,0,s.labels[label])
   end},
   {"tst",function(b1,b2)
     s.cpubudget=s.cpubudget+0.5 --now this op only costs half a cycle!
@@ -419,9 +463,10 @@ end
 
 
 local function parsecommand(b1,b2)
-
   local i=bitsplit(b1,b2,{5,11})
   if ops[i] then
+    local name=ops_definition[i][1]
+    print("parsed:",type(name)=="table" and name[1] or name)
     ops[i](b1,b2)
   end
   
@@ -484,8 +529,10 @@ function s.update(dt)
   s.cpubudget=s.cpubudget+100000*dt
   if s.running then
     while s.cpubudget>0 do
-      i=(s.pc-0xb00)/2
-      --print("pc:",i)
+      --manual pc advance override
+      --print(basen(s.pc,16))
+      --s.pc=tonumber(io.read(),16) or 0xb00
+
       parsecommand(mem[s.pc],mem[s.pc+1])
       s.cpubudget=s.cpubudget-1
       s.pc=s.pc+2
@@ -500,14 +547,14 @@ function s.keypressed(key)
   if key=="backspace" then currentscene=codestate end
 end
 
-function s.writeinstruction(line)
+function s.writeinstruction(line,stage)
   line=line:gsub("[%a_]*:","")
   local op=line:gsub("^[%A]*(%a+).*","%1")
   --print(op)
   local valid,bytes=false,{}
   if op_parse[op_names[op]] then
     --print("parsing: ",op)
-    valid,bytes=op_parse[op_names[op]](op_names[op],line)
+    valid,bytes=op_parse[op_names[op]](op_names[op],line,stage)
     bytes=bytes or {}
   end
   --print(line,valid,b1,b2)
@@ -549,12 +596,17 @@ function s.writeinstructions(code)
   s.labels={}
   --print(#code,"->",#strippedcode)
   for l=1,#strippedcode do
-    local label=strippedcode[l]:gsub("([%a_]*:).*","%1")
-    if #label>0 then
-      s.labels[label]=(s.writei-0xb00)/2
+    local label,occurences=strippedcode[l]:gsub("[^%a_]*([%a_]*:).*","%1")
+    
+    print("instruction "..l..":",basen(s.writei,16))
+    if occurences>0 then
+      s.labels[label]=s.writei
+      print("label "..label..":",basen(s.writei,16))
     end
+    s.writeinstruction(strippedcode[l],2)
   end
   --3: write then all into memory.
+  s.writei=0xb00
   for l=1,#strippedcode do
     s.writeinstruction(strippedcode[l])
   end
