@@ -578,6 +578,7 @@ function isvalid(chk_line,stage)
 end
 
 function s.writeinstructions(code)
+  memset(0xb00,0x400,0)
   s.writei=0xb00
   local strippedcode={}
   --1: go through, only put in instructions which are valid.

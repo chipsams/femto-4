@@ -81,6 +81,15 @@ s.changed=true
 
 local mouseselect=false
 
+local function loadcode()
+  if s.changed then
+    s.changed=false
+    execstate.writeinstructions(s.code)
+  end
+  execstate.init()
+  currentscene=execstate
+end
+
 function s.update()
   if love.mouse.isDown(1) and mouse.onscreen then
     local new_line=flr((mouse.y-2+s.code_scrollpos*4)/4)
@@ -93,19 +102,8 @@ function s.update()
         selecting=true
         mouseselect=false
         s.select_line,s.select_row=s.editing_line,s.editing_row
+        if mouse.y<=4 then loadcode() end
       end
-    end
-    if mouse.y<8 then
-      if s.changed then
-        print("hi")
-        s.changed=false
-        execstate.writei=0xb00
-        memset(0xb00,0x400,0)
-        execstate.writeinstructions(s.code)
-        
-      end
-      cls(0)
-      if mouse.x>60 then execstate.init() currentscene=execstate end
     end
   end
 end
@@ -247,8 +245,18 @@ function s.keypressed(key)
         s.keypressed("return")
       end
     end
+  elseif key=="a" and ctrlheld then
+    s.select_line=1
+    s.select_row=0
+    s.editing_line=#s.code
+    s.editing_row=#(s.code[#s.code])
+    selecting=true
   elseif key=="x" and ctrlheld then
+    local txt=get_selected()
+    love.system.setClipboardText(txt)
     remove_selected("")
+  elseif key=="r" and ctrlheld then
+    loadcode()
   end
   if s.editing_line~=lastline and s.code[s.editing_line] and s.code[lastline] then
     local lastcolon=s.code[lastline]:find(":",nil,true) or 0
