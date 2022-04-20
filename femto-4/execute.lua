@@ -221,36 +221,42 @@ local ops_definition={
       return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,0,0)
     end
   end},
-  --line, rect, filled rect
-  {{"lne","rct","frc"},function(b1,b2)
-    local _,r1,r2,op,reset,col=bitsplit(b1,b2,{5,3,3,2,1,2})
-    local r1,r2=get_regs(r1,r2)
+  --reset, line, rect, filled rect
+  {{"rst","lne","rct","frc"},function(b1,b2)
+    local _,r1,r2,op,r3=bitsplit(b1,b2,{5,3,3,2,3})
+    local r1,r2,r3=get_regs(r1,r2,r3)
     local lx=memsigned[0x350]
     local ly=memsigned[0x351]
     --print(lx,ly,r1(),r2())
     local w=math.abs(lx-r1())+1
     local h=math.abs(ly-r2())+1
-    if reset==0 then
-      if op==0 then
-        s.cpubudget=s.cpubudget-w*h/64
-        line(lx,ly,r1(),r2(),col)
-      elseif op==1  then
-        s.cpubudget=s.cpubudget-(w+h)
-        rect(lx,ly,r1(),r2(),col)
-      elseif op==2  then
-        s.cpubudget=s.cpubudget-w*h/16
-        rectfill(lx,ly,r1(),r2(),col)
-      end
+    local col=r3()
+    print("col:",col)
+    print("op:",op)
+    if op==0 then
+      s.cpubudget=s.cpubudget-w*h/64
+      line(lx,ly,r1(),r2(),col)
+    elseif op==1  then
+      s.cpubudget=s.cpubudget-(w+h)
+      print("rect",lx,ly,r1(),r2(),col)
+      --rect(3,8,6,16,2)
+      rect(lx,ly,r1(),r2(),col)
+    elseif op==2  then
+      s.cpubudget=s.cpubudget-w*h/16
+      rectfill(lx,ly,r1(),r2(),col)
     end
     memsigned[0x350]=r1()
     memsigned[0x351]=r2()
   end,function(id,line)
-    --lne x y 2 first
-    local opname,r1,r2,colour,first=unpack(tokenize(line))
-    local r1,r2=get_reg_names(r1,r2)
-    if not(r1 and r2) then return false end
-    if not better_tonumber(colour) then return false end
-    return true,bitpack({5,3,3,2,1,2},id,r1,r2,({lne=0,rct=1,frc=2})[opname],(first=="reset" or first=="start") and 1 or 0,better_tonumber(colour))
+    local ops={lne=0,rct=1,frc=2,rst=3}
+    --lne x y 2
+    print(line)
+    local opname,r1,r2,r3=unpack(tokenize(line))
+    print(opname)
+    local r1,r2,r3=get_reg_names(r1,r2,r3)
+    if not ops[opname] then return false end
+    if not(r1 and r2 and r3) then return false end
+    return true,bitpack({5,3,3,2,3},id,r1,r2,ops[opname],r3)
   end},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100

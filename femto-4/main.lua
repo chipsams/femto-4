@@ -144,9 +144,10 @@ function love.load()
   execstate=require"execute"
   codestate=require"code"
   drawstate=require"draw"
-  introstate=require"intro"
+  teststate=require"test" --test state isn't to be shown to the user, really
 
   --change this to change the starting state
+  --at the moment should be codestate!
   currentscene=codestate
 end
 
@@ -156,12 +157,13 @@ t=0
 code={}
 
 ([[
-adc x +1
-add x x stk
-add x x stk
-add x x stk
-pek 1 x
-pek 0x35f x
+adc x +3
+adc y +8
+adc c +2
+rst x y c
+adc x +3
+adc y +8
+rct x y c
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.

@@ -268,3 +268,35 @@ function memset(addr,span,value)
     mem[l]=value
   end
 end
+
+function circ(x,y,r,c)
+  x,y=x+.5,y+.5
+  local r2=r*r
+  for oy=0,r do
+    local ox=math.sqrt(r2-oy*oy)
+    if oy>ox+.68 then break end
+
+    pset(x+ox,y+oy,c)
+    pset(x+oy,y+ox,c)
+    pset(x+oy,y-ox,c)
+    pset(x+ox,y-oy,c)
+    pset(x-ox,y+oy,c)
+    pset(x-oy,y+ox,c)
+    pset(x-oy,y-ox,c)
+    pset(x-ox,y-oy,c)
+  end
+end
+
+function circfill(x,y,r,c)
+  x,y=x+.5,y+.5
+  local r2=r*r
+  for oy=0,r do
+    local ox=math.sqrt(r2-oy*oy)
+    if oy>ox+.68 then break end
+
+    setline(x-ox,x+ox,y+oy,c)
+    setline(x-oy,x+oy,y+ox,c)
+    setline(x-oy,x+oy,y-ox,c)
+    setline(x-ox,x+ox,y-oy,c)
+  end
+end
