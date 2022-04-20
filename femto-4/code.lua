@@ -102,9 +102,9 @@ function s.update()
         selecting=true
         mouseselect=false
         s.select_line,s.select_row=s.editing_line,s.editing_row
-        if mouse.y<=4 then loadcode() end
       end
     end
+    if mouse.y<=4 then loadcode() end
   end
 end
 
