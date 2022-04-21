@@ -123,7 +123,7 @@ end
 
 
 
-local reg_names={
+reg_names={
   "a","b","c",
   "x","y",
   "t",
@@ -210,7 +210,7 @@ local ops_definition={
       return false
     end
     return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,opname=="sub" and 1 or 0,0)
-  end},
+  end,". r r r"},
   {"adc",function(b1,b2)--add constant
     local _,t1,negative,value=bitsplit(b1,b2,{5,3,1,7})
     local r1=get_regs(t1)
@@ -225,7 +225,7 @@ local ops_definition={
     if not reg_names[r1] then print"no reg" return false end
     if not better_tonumber(value) then print"not a number" return false end
     return true,bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,better_tonumber(value))
-  end},
+  end,". r '[%+%-] n"},
   {"plt",function(b1,b2)--pset
     local _,r1,r2,or3,_,literal=bitsplit(b1,b2,{5,3,3,3,1,1})
     local r1,r2,r3=get_regs(r1,r2,or3)
@@ -450,15 +450,18 @@ local ops_definition={
 local ops={}
 local op_parse={}
 local op_names={}
+op_errorcheck={}
 for i,op in pairs(ops_definition) do
   ops[i]=op[2]
   op_parse[i]=op[3]
   local name=op[1]
   if type(name)=="string" then
     op_names[op[1]]=i
+    op_errorcheck[op[1]]=op[4]
   else
     for _,v in pairs(name) do
       op_names[v]=i
+      op_errorcheck[v]=op[4]
     end
   end
 end
@@ -626,7 +629,6 @@ function s.writeinstructions(code)
     s.writeinstruction(strippedcode[l],2)
   end
   --3: write then all into memory.
-  codestate.errors={}
   s.writei=0xb00
   for l=1,#strippedcode do
     s.writeinstruction(strippedcode[l],3)
