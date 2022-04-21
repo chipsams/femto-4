@@ -63,30 +63,35 @@ end
 
 function tokenize(st)
   local tokens={}
+  local token_areas={}
   local k=1
+  local function add_token(start,endof)
+    table.insert(tokens,st:sub(start,endof or k))
+    table.insert(token_areas,{start,endof or k})
+  end
   while k<=#st do
     local ch=st:sub(k,k)
     if st:find("0q[0123]",k)==k then
       local start=k
       k=st:find("[^0123]",k+2)
-      table.insert(tokens,st:sub(start,k))
+      add_token(start)
     elseif st:find("0b[01]",k)==k then
       local start=k
       k=st:find("[^01]",k+2)
-      table.insert(tokens,st:sub(start,k))
+      add_token(start)
     elseif st:find("0x%d",k)==k then
       local start=k
       k=st:find("[^%dabcdef]",k+2)
-      table.insert(tokens,st:sub(start,k))
+      add_token(start)
     elseif st:find("%d",k)==k then
       local start=k
       k=st:find("%D",k+1) or #st+1
-      table.insert(tokens,st:sub(start,k-1))
-
+      add_token(start,k-1)
+      
     elseif ch:find("[%a_]") then
       local start=k
       k=st:find("[^%a%d_]",k+1) or #st+1
-      table.insert(tokens,st:sub(start,k-1))
+      add_token(start,k-1)
     else
       for _,op in pairs(ops) do
         if st:find(op,k,true)==k then
@@ -98,10 +103,13 @@ function tokenize(st)
     end
     k=k+1
   end
-  return tokens
+  return tokens,token_areas
 end
 
-
+local txt=[[
+a bcd ef g
+]]
+local tokens,token_areas=tokenize(txt)
 
 
 local function get_regs(reg,...)
@@ -180,6 +188,7 @@ end
   parse/isvalid (returns true,b1,b2 on success, false if not a valid instruction.)
 }
 ]]
+
 local ops_definition={
   [0]={"hlt",function()
     s.cpubudget=0
@@ -193,10 +202,13 @@ local ops_definition={
     local result=r1()+r2()*(negate_r2==1 and -1 or 1)
     --print(r1(),"+",r2(),"=",result)
     r3(result)
-  end,function(id,line)
-    local opname,r1,r2,r3=unpack(tokenize(line))
-    r1,r2,r3=get_reg_names(r1,r2,r3)
-    if not (r1 and r2 and r3) then return false end
+  end,function(id,line,_,linenum)
+    local tokens=tokenize(line)
+    local opname,r1n,r2n,r3n=unpack(tokens)
+    local r1,r2,r3=get_reg_names(r1n,r2n,r3n)
+    if not (r1 and r2 and r3) then
+      return false
+    end
     return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,opname=="sub" and 1 or 0,0)
   end},
   {"adc",function(b1,b2)--add constant
@@ -206,7 +218,8 @@ local ops_definition={
     --print("r"..t1,"("..r1()..")",negative==1 and "-" or "+",value,"=",result)
     r1(result)
   end,function(id,line)
-    local _,r1,sign,value=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local _,r1,sign,value=unpack(tokens)
     --print('"'..(better_tonumber(value) or "?")..'"')
     if not (sign=="-" or sign=="+") then print"no sign" return false end
     if not reg_names[r1] then print"no reg" return false end
@@ -218,7 +231,8 @@ local ops_definition={
     local r1,r2,r3=get_regs(r1,r2,or3)
     pset(r1(),r2(),literal==1 and or3 or r3())
   end,function(id,line)
-    local _,r1,r2,or3=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local _,r1,r2,or3=unpack(tokens)
     local r1,r2,r3=get_reg_names(r1,r2,or3)
     --print(better_tonumber(or3) and "is number" or "not number")
     if not (r1 and r2) then return false end
@@ -257,7 +271,8 @@ local ops_definition={
   end,function(id,line)
     local ops={lne=0,rct=1,frc=2,rst=3}
     --lne x y 2
-    local opname,r1,r2,r3=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local opname,r1,r2,r3=unpack(tokens)
     local r1,r2,r3=get_reg_names(r1,r2,r3)
     if not ops[opname] then return false end
     if not(r1 and r2 and r3) then return false end
@@ -281,7 +296,8 @@ local ops_definition={
       circ(unpack(args))
     end
   end,function(id,line)
-    local op,x,y,r,col=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local op,x,y,r,col=unpack(tokens)
     local x,y,r,c=get_reg_names(x,y,r,col)
     if not(x and y and r and (c or better_tonumber(col))) then return false end
     --xxxxx xxx|xxx xxx xx|x x x .....
@@ -299,7 +315,8 @@ local ops_definition={
     local _,r1,override_col,override=bitsplit(b1,b2,{5,3,2,1,5})
     cls(override and override_col or regs[r1]())
   end,function(id,line)
-    local _,v=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local _,v=unpack(tokens)
     if not v then return false end
     if reg_names[v] then print("is reg") return true,bitpack({5,3,8},id,reg_names[v],0) end
     if better_tonumber(v)  then print("is num") return true,bitpack({5,3,2,1,5},id,0,better_tonumber(v),1,0) end
@@ -318,7 +335,8 @@ local ops_definition={
     end
   end,function(id,line,stage)
     --print("jmp",line,stage)
-    local op,label=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local op,label=unpack(tokens)
     if stage==1 or stage==2 then
       return true,{0,0,0}
     end
@@ -338,7 +356,8 @@ local ops_definition={
     elseif dif==0 and e0==1 then test_reg(1)
     elseif dif >0 and g0==1 then test_reg(1) end
   end,function(id,line)
-    local _,inv,r1,op,r2=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local _,inv,r1,op,r2=unpack(tokens)
     local flip=false
     if inv=="not" or inv=="!" then flip=true else r1,op,r2=inv,r1,op end
     local ri1,ri2=get_reg_names(r1,r2)
@@ -365,7 +384,8 @@ local ops_definition={
       local reg=get_regs(reg_i)
       print("debug:",reg_names[reg_i+1],reg())
   end,function(id,line)
-    local _,reg=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local _,reg=unpack(tokens)
     reg=get_reg_names(reg)
     if not reg then return false end
     return true,bitpack({5,3,8},id,reg,0)
@@ -407,7 +427,8 @@ local ops_definition={
     --bit format: 
     --     |peek/poke|target register|register address|unused|     address
     --xxxxx|x        |xxx            |x xxx           |xxx   |xxxx xxxxxxxxxxxx
-    local op,adr,reg_name=unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local op,adr,reg_name=unpack(tokens)
     --print("adr:",adr)
     local adr_reg,reg=get_reg_names(adr,reg_name)
     local num_adr=better_tonumber(adr)
@@ -543,14 +564,15 @@ function s.keypressed(key)
   if key=="backspace" then currentscene=codestate end
 end
 
-function s.writeinstruction(line,stage)
+function s.writeinstruction(write_line,stage)
+  local line=write_line.line
   line=line:gsub("[%a_]*:","")
   local op=line:gsub("^[%A]*(%a+).*","%1")
   --print(op)
   local valid,bytes=false,{}
   if op_parse[op_names[op]] then
     --print("parsing: ",op)
-    valid,bytes=op_parse[op_names[op]](op_names[op],line,stage)
+    valid,bytes=op_parse[op_names[op]](op_names[op],line,stage,write_line.line_num)
     bytes=bytes or {}
   end
   --print(line,valid,b1,b2)
@@ -566,13 +588,13 @@ function s.writeinstruction(line,stage)
   end
 end
 
-function isvalid(chk_line,stage)
+function isvalid(chk_line,stage,linenumber)
   local line=chk_line:gsub("[%a_]*:","")
   if not chk_line:find("%S") then return false end
   local op=line:gsub("^[%A]*(%a+).*","%1")
   local valid,bytes=false,{}
   if op_parse[op_names[op]] then
-    valid,bytes=op_parse[op_names[op]](op_names[op],line,stage)
+    valid,bytes=op_parse[op_names[op]](op_names[op],line,stage,linenumber)
   end
   return valid
 end
@@ -583,8 +605,8 @@ function s.writeinstructions(code)
   local strippedcode={}
   --1: go through, only put in instructions which are valid.
   for l=1,#code do
-    if isvalid(code[l],1) then
-      table.insert(strippedcode,code[l])
+    if isvalid(code[l],1,l) then
+      table.insert(strippedcode,{line_num=l,line=code[l]})
     else
       print("invalid:",code[l])
     end
@@ -593,7 +615,7 @@ function s.writeinstructions(code)
   s.labels={}
   --print(#code,"->",#strippedcode)
   for l=1,#strippedcode do
-    local label,occurences=strippedcode[l]:gsub("[^%a_]*([%a_]*:).*","%1")
+    local label,occurences=strippedcode[l].line:gsub("[^%a_]*([%a_]*:).*","%1")
     
     --print("instruction "..l..":",basen(s.writei,16))
     if occurences>0 then
@@ -603,9 +625,10 @@ function s.writeinstructions(code)
     s.writeinstruction(strippedcode[l],2)
   end
   --3: write then all into memory.
+  codestate.errors={}
   s.writei=0xb00
   for l=1,#strippedcode do
-    s.writeinstruction(strippedcode[l])
+    s.writeinstruction(strippedcode[l],3)
   end
 end
 

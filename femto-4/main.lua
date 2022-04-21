@@ -157,10 +157,6 @@ t=0
 code={}
 
 ([[
-skp:flp
-adc b +1
-plt b b b
-jmp skp
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.

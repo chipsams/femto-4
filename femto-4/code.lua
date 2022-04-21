@@ -1,6 +1,11 @@
 local s={}
 s.code=code or {}
 
+s.errors={}
+function s.add_error(err,line)
+  table.insert(s.errors,{err[1],err[2],line})
+end
+
 local function refresh_bounds()
   s.editing_row=mid(0,s.editing_row,#s.code[s.editing_line])
 end
@@ -83,6 +88,7 @@ local mouseselect=false
 
 local function loadcode()
   if s.changed then
+    s.errors={}
     s.changed=false
     execstate.writeinstructions(s.code)
   end
@@ -152,6 +158,11 @@ function s.draw()
       end
       sc_write(displayline,17,i*4+2-yoffset,2)
       if i==s.editing_line and showcursor then sc_write("|",cursorpos(s.editing_line,s.editing_row),i*4+2-yoffset,1) end
+    end
+    for _,error in pairs(s.errors) do
+      local x1,x2=cursorpos(error[3],error[1])-3,cursorpos(error[3],error[2])+1
+      local y=error[3]*4-s.code_scrollpos*4+5
+      line(x1,y,x2,y,1)
     end
     rectfill(0,0,63,4,1)
     rectfill(0,42,63,47,1)
