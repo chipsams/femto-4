@@ -396,7 +396,8 @@ local ops_definition={
     t_reg=get_regs(t_reg)
     t_reg(stat_funcs[stat]())
   end,function(id,line)
-    local _,stat,reg = unpack(tokenize(line))
+    local tokens=tokenize(line)
+    local _,stat,reg = unpack(tokens)
     if not reg or not get_reg_names(reg) then return false end
     if not stat_names[stat] then return false end
     return true,bitpack({5,1,7,3},id,0,stat_names[stat],get_reg_names(reg))
