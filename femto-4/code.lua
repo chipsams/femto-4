@@ -2,24 +2,30 @@ local s={}
 s.code=code or {}
 
 s.errors={}
+for l=1,#s.code do
+  s.errors[l]={}
+end
 
 function match(token,pattern)
   for k,v in ipairs(pattern) do
     if v=="n" and better_tonumber(token) then return true,"number"
-    elseif v=="r" and regs[token] then return true,"register"
-    elseif v=="l" and labels[token] then return true,"label"
+    elseif v=="r" and reg_names[token] then return true,"register"
+    elseif v=="l" and not token:find("[^%l%d_]") then return true,"label"
+    elseif v=="." then return true,"any"
     elseif v:sub(1,1)=="'" and token:match(v:sub(2,-1)) then return true,"pattern"
     end
   end
   return false,pattern.err_message
 end
 
-function match_tokens(line,pattern)
-  local tokens,token_ranges=tokenize(line)
+function match_tokens(matchline,pattern)
+  local tokens,token_ranges=tokenize(matchline)
+  print(unpack(tokens))
   local errors={}
   local pattern_parts={}
   pattern:gsub("%S+",function(v)
     local pattern_part={}
+    pattern_part.original=v
     local err_message="error (unspecified)"
     if v:sub(-1,-1)=="?" then pattern_part.optional=true v=v:sub(1,-2) end
     v=v:gsub("(.*)£(.*)",function(other,message)
@@ -34,14 +40,18 @@ function match_tokens(line,pattern)
   end)
   local tok_i=1
   while tok_i<=#tokens do
-    if #pattern_parts==0 then table.insert(errors,{token="",range={#line,#line},error="too many tokens!"}) return errors end
+    if #pattern_parts==0 then table.insert(errors,{c=1,token="",range={#matchline,#matchline-1},error="too many tokens!"}) return errors end
     local token=tokens[tok_i]
+    print(pattern_parts[1].optional and "?" or "",unpack(pattern_parts[1]))
     local success,err=match(token,pattern_parts[1])
+    print(pattern_parts[1].original,success and "accepted" or "rejected",token,matchline:sub(token_ranges[tok_i][1],token_ranges[tok_i][2]))
     if pattern_parts[1].optional and not success then
       table.remove(pattern_parts,1)
     else
       if not success then
-        table.insert(errors,{token=token,range=token_ranges[tok_i],error=err})
+        table.insert(errors,{c=1,token=token,range=token_ranges[tok_i] or {#matchline,#matchline-1},error=err})
+      else
+        --table.insert(errors,{c=3,token=token,range=token_ranges[tok_i] or {#matchline,#matchline-1},error=err})
       end
       table.remove(pattern_parts,1)
       tok_i=tok_i+1
@@ -50,8 +60,29 @@ function match_tokens(line,pattern)
   while #pattern_parts>0 do
     if pattern_parts[1].optional then table.remove(pattern_parts,1) else break end
   end
-  if #pattern_parts>0 then table.insert(errors,{token="",range={#line,#line},error="not enough tokens!"}) return errors end
+  if #pattern_parts>0 then table.insert(errors,{c=1,token="",range={#matchline,#matchline-1},error="not enough tokens!"}) return errors end
   return errors
+end
+
+local function errorcheck(linenum)
+  print(("\n"):rep(10))
+  local o_chkline=s.code[linenum]
+  local chkline=o_chkline
+  s.errors[linenum]={}
+  local colon=o_chkline:find(":")
+  if colon then chkline=o_chkline:sub(colon+1,-1) end
+  local name=chkline:match("([a-z]+)(.*)")
+  if op_errorcheck[name] then
+    local errors=match_tokens(chkline,op_errorcheck[name])
+    if colon then
+      for _,error in pairs(errors) do
+        error.range[1]=error.range[1]+colon
+        error.range[2]=error.range[2]+colon
+      end
+    end
+    for _,error in pairs(errors) do print(error.error,o_chkline:sub(error.range[1],error.range[2])) end
+    s.errors[linenum]=errors
+  end
 end
 
 local function refresh_bounds()
@@ -93,6 +124,7 @@ local function remove_selected(replace)
   local lastpart=s.code[l_editing_line]:sub(l_editing_row+1,-1)
   for l=l_lect_line+1,l_editing_line do
     table.remove(s.code,l_lect_line)
+    table.remove(s.errors,l_lect_line)
   end
   selecting=false
   s.code[l_lect_line]=firstpart..replace..lastpart
@@ -136,7 +168,6 @@ local mouseselect=false
 
 local function loadcode()
   if s.changed then
-    s.errors={}
     s.changed=false
     execstate.writeinstructions(s.code)
   end
@@ -174,10 +205,10 @@ function s.draw()
     i=math.floor(t*30)%4
     --mem[0x346+i]=(mem[0x346+i]+1)%16
     local showcursor=t-math.floor(t)>.5
-    for i,line in ipairs(s.code) do
-      local colon=line:find(":",nil,true) or 0
-      local displayline=line
-      if colon then displayline=line:sub(colon+1,-1) end
+    for i,code_line in ipairs(s.code) do
+      local colon=code_line:find(":",nil,true) or 0
+      local displayline=code_line
+      if colon then displayline=code_line:sub(colon+1,-1) end
 
       local index=pad(tostring(i),3," ")
       --selection background
@@ -199,18 +230,25 @@ function s.draw()
         if not(s.editing_line==s.select_line and s.editing_row==s.select_row) then rect(x1,i*4+1-yoffset,x2,i*4+5-yoffset,3) end
       end
       if colon>0 then
-        sc_write(pad(line:sub(1,colon),4," "),1,i*4+2-yoffset,2)
+        sc_write(pad(code_line:sub(1,colon),4," "),1,i*4+2-yoffset,2)
       else
         sc_write(index,1,i*4+2-yoffset,3)
         sc_write(":",nil,nil,3)
       end
       sc_write(displayline,17,i*4+2-yoffset,2)
       if i==s.editing_line and showcursor then sc_write("|",cursorpos(s.editing_line,s.editing_row),i*4+2-yoffset,1) end
-    end
-    for _,error in pairs(s.errors) do
-      local x1,x2=cursorpos(error[3],error[1])-3,cursorpos(error[3],error[2])+1
-      local y=error[3]*4-s.code_scrollpos*4+5
-      line(x1,y,x2,y,1)
+      for _,error in pairs(s.errors[i]) do
+        local x1,x2=cursorpos(i,error.range[1])-3,cursorpos(i,error.range[2])+1
+        local y=i*4-yoffset+5
+        if x2<=x1 then
+          rect(x1,y-1,x1+2,y+1,error.c)
+        else
+          line(x1,y,x2,y,error.c)
+        end
+        if mouse.x>x1-2 and mouse.x<x2+2 then
+          sc_write(error.error,x1,y+2,1)
+        end
+      end
     end
     rectfill(0,0,63,4,1)
     rectfill(0,42,63,47,1)
@@ -232,8 +270,11 @@ function s.textinput(key)
       remove_selected(key)
     else
       s.code[s.editing_line]=insert_char(cur_line,s.editing_row,key) s.editing_row=s.editing_row+1
+      
     end
   end
+  
+  errorcheck(s.editing_line)
 end
 
 
@@ -265,6 +306,7 @@ function s.keypressed(key)
       if s.editing_row==0 and s.editing_line>1 then
         s.code[s.editing_line-1],s.editing_row=s.code[s.editing_line-1]..code[s.editing_line],#s.code[s.editing_line-1]
         table.remove(s.code,s.editing_line)
+        table.remove(s.errors,s.editing_line)
         s.editing_line=s.editing_line-1
       else
         s.code[s.editing_line]=del_char(cur_line,s.editing_row) s.editing_row=s.editing_row-1
@@ -276,7 +318,10 @@ function s.keypressed(key)
       s.keypressed("return")
     else
       table.insert(s.code,s.editing_line+1,cur_line:sub(s.editing_row+1,-1))
+      table.insert(s.errors,s.editing_line+1,{})
       s.code[s.editing_line]=cur_line:sub(1,s.editing_row) s.editing_line=s.editing_line+1 s.editing_row=0
+      errorcheck(s.editing_line)
+      errorcheck(s.editing_line-1)
     end
   elseif key=="lshift" then
     if not selecting then
@@ -299,9 +344,11 @@ function s.keypressed(key)
     for st in add_txt:gmatch("[^\n]+") do
       l=l+1
       code[s.editing_line]=insert_char(code[s.editing_line],s.editing_row,st)
+      errorcheck(s.editing_line)
       s.editing_row=s.editing_row+#st
       if l<=newlines then
         s.keypressed("return")
+        errorcheck(s.editing_line)
       end
     end
   elseif key=="a" and ctrlheld then
@@ -314,6 +361,8 @@ function s.keypressed(key)
     local txt=get_selected()
     love.system.setClipboardText(txt)
     remove_selected("")
+  elseif key=="e" and ctrlheld then
+    errorcheck(s.editing_line)
   elseif key=="r" and ctrlheld then
     loadcode()
   end
@@ -328,6 +377,7 @@ function s.keypressed(key)
   s.editing_line=mid(1,s.editing_line,#s.code)
   refresh_bounds()
   recalc_length()
+  errorcheck(s.editing_line)
 end
 
 function s.keyreleased(key)
