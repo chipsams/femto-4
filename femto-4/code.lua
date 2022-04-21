@@ -10,7 +10,7 @@ function match(token,pattern)
   for k,v in ipairs(pattern) do
     if v=="n" and better_tonumber(token) then return true,"number"
     elseif v=="r" and reg_names[token] then return true,"register"
-    elseif v=="l" and labels[token] then return true,"label"
+    elseif v=="l" and not token:find("[^%l%d_]") then return true,"label"
     elseif v=="." then return true,"any"
     elseif v:sub(1,1)=="'" and token:match(v:sub(2,-1)) then return true,"pattern"
     end
@@ -20,10 +20,12 @@ end
 
 function match_tokens(matchline,pattern)
   local tokens,token_ranges=tokenize(matchline)
+  print(unpack(tokens))
   local errors={}
   local pattern_parts={}
   pattern:gsub("%S+",function(v)
     local pattern_part={}
+    pattern_part.original=v
     local err_message="error (unspecified)"
     if v:sub(-1,-1)=="?" then pattern_part.optional=true v=v:sub(1,-2) end
     v=v:gsub("(.*)£(.*)",function(other,message)
@@ -38,14 +40,18 @@ function match_tokens(matchline,pattern)
   end)
   local tok_i=1
   while tok_i<=#tokens do
-    if #pattern_parts==0 then table.insert(errors,{token="",range={#matchline,#matchline-1},error="too many tokens!"}) return errors end
+    if #pattern_parts==0 then table.insert(errors,{c=1,token="",range={#matchline,#matchline-1},error="too many tokens!"}) return errors end
     local token=tokens[tok_i]
+    print(pattern_parts[1].optional and "?" or "",unpack(pattern_parts[1]))
     local success,err=match(token,pattern_parts[1])
+    print(pattern_parts[1].original,success and "accepted" or "rejected",token,matchline:sub(token_ranges[tok_i][1],token_ranges[tok_i][2]))
     if pattern_parts[1].optional and not success then
       table.remove(pattern_parts,1)
     else
       if not success then
-        table.insert(errors,{token=token,range=token_ranges[tok_i] or {#matchline,#matchline-1},error=err})
+        table.insert(errors,{c=1,token=token,range=token_ranges[tok_i] or {#matchline,#matchline-1},error=err})
+      else
+        --table.insert(errors,{c=3,token=token,range=token_ranges[tok_i] or {#matchline,#matchline-1},error=err})
       end
       table.remove(pattern_parts,1)
       tok_i=tok_i+1
@@ -54,23 +60,27 @@ function match_tokens(matchline,pattern)
   while #pattern_parts>0 do
     if pattern_parts[1].optional then table.remove(pattern_parts,1) else break end
   end
-  if #pattern_parts>0 then table.insert(errors,{token="",range={#matchline,#matchline-1},error="not enough tokens!"}) return errors end
+  if #pattern_parts>0 then table.insert(errors,{c=1,token="",range={#matchline,#matchline-1},error="not enough tokens!"}) return errors end
   return errors
 end
 
 local function errorcheck(linenum)
-  local chkline=s.code[linenum]
+  print(("\n"):rep(10))
+  local o_chkline=s.code[linenum]
+  local chkline=o_chkline
   s.errors[linenum]={}
-  print(chkline)
-  local colon=chkline:find(":")
-  if colon then chkline=chkline:sub(colon+1,-1) end
+  local colon=o_chkline:find(":")
+  if colon then chkline=o_chkline:sub(colon+1,-1) end
   local name=chkline:match("([a-z]+)(.*)")
-  print(name)
   if op_errorcheck[name] then
     local errors=match_tokens(chkline,op_errorcheck[name])
-    for _,error in pairs(errors) do
-      print(error[4])
+    if colon then
+      for _,error in pairs(errors) do
+        error.range[1]=error.range[1]+colon
+        error.range[2]=error.range[2]+colon
+      end
     end
+    for _,error in pairs(errors) do print(error.error,o_chkline:sub(error.range[1],error.range[2])) end
     s.errors[linenum]=errors
   end
 end
@@ -230,7 +240,14 @@ function s.draw()
       for _,error in pairs(s.errors[i]) do
         local x1,x2=cursorpos(i,error.range[1])-3,cursorpos(i,error.range[2])+1
         local y=i*4-yoffset+5
-        line(x1,y,x2,y,1)
+        if x2<=x1 then
+          rect(x1,y-1,x1+2,y+1,error.c)
+        else
+          line(x1,y,x2,y,error.c)
+        end
+        if mouse.x>x1-2 and mouse.x<x2+2 then
+          sc_write(error.error,x1,y+2,1)
+        end
       end
     end
     rectfill(0,0,63,4,1)

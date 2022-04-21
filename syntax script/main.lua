@@ -1,4 +1,21 @@
 
+ops={
+  "<=>",
+  "==",
+  "><",
+  "!=",
+  "~=",
+  "<>",
+  "<=",
+  ">=",
+  "!",
+  "+",
+  "-",
+  "=",
+  ">",
+  "<",
+}
+
 function tokenize(st)
   local tokens={}
   local token_areas={}
@@ -109,10 +126,10 @@ function match_tokens(line,pattern)
   return errors
 end
 
-local errors=match_tokens([[1 x 4]],"r|n? r? r? n£no_number_provided")
+local errors=match_tokens([[1 - 1]],"r|n '[+%-] n")
 print(#errors)
 for i,error in ipairs(errors) do
-  print(error.error,error.token,error.range)
+  print(error.error,error.token,error.range[1].."-"..error.range[2])
 end
 
 function love.keypressed(key)

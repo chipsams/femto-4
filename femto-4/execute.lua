@@ -32,7 +32,8 @@ function bitpack(splitsizes,...)
   return bytes
 end
 
-local ops={
+--keep this ordered from longest (at the start) to shortest (at the end)! (order outside of that doesn't matter)
+ops={
   "<=>",
   "==",
   "><",
@@ -73,16 +74,16 @@ function tokenize(st)
     local ch=st:sub(k,k)
     if st:find("0q[0123]",k)==k then
       local start=k
-      k=st:find("[^0123]",k+2)
-      add_token(start)
+      k=st:find("[^0123]",k+2) or #st+1
+      add_token(start,k-1)
     elseif st:find("0b[01]",k)==k then
       local start=k
-      k=st:find("[^01]",k+2)
-      add_token(start)
+      k=st:find("[^01]",k+2) or #st+1
+      add_token(start,k-1)
     elseif st:find("0x[%dabcdef]",k)==k then
       local start=k
-      k=st:find("[^%dabcdef]",k+2)
-      add_token(start)
+      k=st:find("[^%dabcdef]",k+2) or #st+1
+      add_token(start,k-1)
     elseif st:find("%d",k)==k then
       local start=k
       k=st:find("%D",k+1) or #st+1
@@ -92,10 +93,11 @@ function tokenize(st)
       local start=k
       k=st:find("[^%a%d_]",k+1) or #st+1
       add_token(start,k-1)
+      k=k-1
     else
       for _,op in pairs(ops) do
         if st:find(op,k,true)==k then
-          table.insert(tokens,op)
+          add_token(k,k+#op-1)
           k=k+#op-1
           break
         end
@@ -105,12 +107,6 @@ function tokenize(st)
   end
   return tokens,token_areas
 end
-
-local txt=[[
-a bcd ef g
-]]
-local tokens,token_areas=tokenize(txt)
-
 
 local function get_regs(reg,...)
   if reg then
@@ -195,7 +191,7 @@ local ops_definition={
     s.running=false
   end,function()
     return true,{0,0}
-  end},
+  end,"."},
   {{"add","sub"},function(b1,b2)--add
     local _,r1,r2,r3,negate_r2,absolute=bitsplit(b1,b2,{5,3,3,3,1,1})
     r1,r2,r3=get_regs(r1,r2,r3)
@@ -210,7 +206,7 @@ local ops_definition={
       return false
     end
     return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,opname=="sub" and 1 or 0,0)
-  end,". r r r"},
+  end,". r£r1 r£r2 r£r3"},
   {"adc",function(b1,b2)--add constant
     local _,t1,negative,value=bitsplit(b1,b2,{5,3,1,7})
     local r1=get_regs(t1)
@@ -225,7 +221,7 @@ local ops_definition={
     if not reg_names[r1] then print"no reg" return false end
     if not better_tonumber(value) then print"not a number" return false end
     return true,bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,better_tonumber(value))
-  end,". r '[%+%-] n"},
+  end,". r '[+%-]£no_sign n"},
   {"plt",function(b1,b2)--pset
     local _,r1,r2,or3,_,literal=bitsplit(b1,b2,{5,3,3,3,1,1})
     local r1,r2,r3=get_regs(r1,r2,or3)
@@ -242,7 +238,7 @@ local ops_definition={
     else
       return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,0,0)
     end
-  end},
+  end,". r r r|n"},
   --reset, line, rect, filled rect
   {{"rst","lne","rct","frc"},function(b1,b2)
     local _,r1,r2,op,r3=bitsplit(b1,b2,{5,3,3,2,3})
@@ -277,7 +273,7 @@ local ops_definition={
     if not ops[opname] then return false end
     if not(r1 and r2 and r3) then return false end
     return true,bitpack({5,3,3,2,3},id,r1,r2,ops[opname],r3)
-  end},
+  end,". r r r"},
   {{"crc","fcc"},function(b1,b2)
     local b3=mem[s.pc+2]
     s.pc=s.pc+1
@@ -309,7 +305,7 @@ local ops_definition={
     c and 1 or 0, 0)
     --for _,byte in ipairs(bytes) do print(basen(byte,2,8)) end
     return true,bytes
-  end},
+  end,". r r r r|n"},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100
     local _,r1,override_col,override=bitsplit(b1,b2,{5,3,2,1,5})
@@ -321,7 +317,7 @@ local ops_definition={
     if reg_names[v] then print("is reg") return true,bitpack({5,3,8},id,reg_names[v],0) end
     if better_tonumber(v)  then print("is num") return true,bitpack({5,3,2,1,5},id,0,better_tonumber(v),1,0) end
     return false
-  end},
+  end,". r|n"},
   {{"jmp","cjp"},function(b1,b2)
     local b3=mem[s.pc+2]
     s.pc=s.pc+1
@@ -344,7 +340,7 @@ local ops_definition={
     label=label..":"
     if not s.labels[label] then return false end
     return true,bitpack({5,1,1,1,8+8},id,op=="cjp" and 1 or 0,0,0,s.labels[label])
-  end},
+  end,". l"},
   {"tst",function(b1,b2)
     s.cpubudget=s.cpubudget+0.5 --now this op only costs half a cycle!
     local _,ri1,ri2,l0,e0,g0=bitsplit(b1,b2,{5,3,3,1,1,1,2})
@@ -378,7 +374,7 @@ local ops_definition={
     if not op_table[op] then return false end
     local mask=bit.bxor(op_table[op],flip and 7 or 0)
     return true,bitpack({5,3,3,3,2},id,ri1,ri2,mask,0)
-  end},
+  end,[[. '!|'not? r '><|'>|'=|'==|'>=|'<|'!=|'~=|'<>|'<=£not_valid r]]},
   {"deb",function(b1,b2)
       local _,reg_i=bitsplit(b1,b2,{5,3,8})
       local reg=get_regs(reg_i)
@@ -389,7 +385,7 @@ local ops_definition={
     reg=get_reg_names(reg)
     if not reg then return false end
     return true,bitpack({5,3,8},id,reg,0)
-  end},
+  end,". r"},
   {{"stt","stat","get"},function(b1,b2)
     s.cpubudget=s.cpubudget-9
     local _,reg_mode,stat,t_reg=bitsplit(b1,b2,{5,1,7,3})
@@ -401,13 +397,12 @@ local ops_definition={
     if not reg or not get_reg_names(reg) then return false end
     if not stat_names[stat] then return false end
     return true,bitpack({5,1,7,3},id,0,stat_names[stat],get_reg_names(reg))
-  end},
+  end,". . r"},
   {"flp",function()
     s.cpubudget=0
   end,function(id,line)
     return true,bitpack({5,11},id,0)
-  end
-  },
+  end,"."},
   {{"pek","pok"},function(b1,b2)
     local b3,b4=mem[s.pc],mem[s.pc+1]
     local _,peek,t_reg,reg_mode,a_reg,_=bitsplit(b1,b2,{5,1,3,1,3,3})
@@ -443,9 +438,7 @@ local ops_definition={
       return true,bytes
     end
     return false,{0,0}
-  end
-
-  },
+  end,". r|n r"},
 }
 local ops={}
 local op_parse={}
