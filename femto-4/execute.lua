@@ -79,7 +79,7 @@ function tokenize(st)
       local start=k
       k=st:find("[^01]",k+2)
       add_token(start)
-    elseif st:find("0x%d",k)==k then
+    elseif st:find("0x[%dabcdef]",k)==k then
       local start=k
       k=st:find("[^%dabcdef]",k+2)
       add_token(start)

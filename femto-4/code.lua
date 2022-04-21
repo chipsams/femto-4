@@ -2,8 +2,56 @@ local s={}
 s.code=code or {}
 
 s.errors={}
-function s.add_error(err,line)
-  table.insert(s.errors,{err[1],err[2],line})
+
+function match(token,pattern)
+  for k,v in ipairs(pattern) do
+    if v=="n" and better_tonumber(token) then return true,"number"
+    elseif v=="r" and regs[token] then return true,"register"
+    elseif v=="l" and labels[token] then return true,"label"
+    elseif v:sub(1,1)=="'" and token:match(v:sub(2,-1)) then return true,"pattern"
+    end
+  end
+  return false,pattern.err_message
+end
+
+function match_tokens(line,pattern)
+  local tokens,token_ranges=tokenize(line)
+  local errors={}
+  local pattern_parts={}
+  pattern:gsub("%S+",function(v)
+    local pattern_part={}
+    local err_message="error (unspecified)"
+    if v:sub(-1,-1)=="?" then pattern_part.optional=true v=v:sub(1,-2) end
+    v=v:gsub("(.*)£(.*)",function(other,message)
+      err_message=message
+      return other
+    end)
+    v:gsub("[^|]+",function(v)
+      table.insert(pattern_part,v)
+    end)
+    pattern_part.err_message=err_message
+    table.insert(pattern_parts,pattern_part)
+  end)
+  local tok_i=1
+  while tok_i<=#tokens do
+    if #pattern_parts==0 then table.insert(errors,{token="",range={#line,#line},error="too many tokens!"}) return errors end
+    local token=tokens[tok_i]
+    local success,err=match(token,pattern_parts[1])
+    if pattern_parts[1].optional and not success then
+      table.remove(pattern_parts,1)
+    else
+      if not success then
+        table.insert(errors,{token=token,range=token_ranges[tok_i],error=err})
+      end
+      table.remove(pattern_parts,1)
+      tok_i=tok_i+1
+    end
+  end
+  while #pattern_parts>0 do
+    if pattern_parts[1].optional then table.remove(pattern_parts,1) else break end
+  end
+  if #pattern_parts>0 then table.insert(errors,{token="",range={#line,#line},error="not enough tokens!"}) return errors end
+  return errors
 end
 
 local function refresh_bounds()

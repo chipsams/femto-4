@@ -157,6 +157,7 @@ t=0
 code={}
 
 ([[
+ 
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.
