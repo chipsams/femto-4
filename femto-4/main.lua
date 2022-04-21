@@ -169,7 +169,14 @@ function love.resize(w,h)
   screen.y=h/2-screen.scale*32
 end
 
+escape_timer=0
 function love.update(dt)
+  if love.keyboard.isDown("escape") then
+    escape_timer=escape_timer+dt
+    if escape_timer>=.75 then love.event.quit() end
+  else
+    escape_timer=0
+  end
   --screenpos=love.mouse.isDown(1) and 0x800 or 0x400
   t=t+dt
   local mx,my=love.mouse.getPosition()
@@ -186,17 +193,19 @@ end
 
 function love.draw()
   --sy=64+math.sin(t)*8
+
   love.graphics.clear()
   local r={}
   local g={}
   local b={}
   
+
   for l=0,3 do
     local palindex=mem[0x346+l]
     r[l],g[l],b[l]=pal:getPixel(palindex%16,math.floor(palindex/16))
   end
   renderdata:mapPixel(function(x,y)
-    local v=bit.rshift(mem[math.floor(x/4+y*16)+screenpos],x%4*2)%4
+    local v=bit.rshift(mem[math.floor(bit.rshift(x,2)+bit.lshift(y,4))+screenpos],x%4*2)%4
     --return v,v,v
     return r[v],g[v],b[v]
   end)
@@ -204,13 +213,14 @@ function love.draw()
   love.graphics.clear(0,0,0)
   love.graphics.draw(renderscreen,screen.x,screen.y,0,screen.scale,screen.scale)
 
+  if escape_timer>0 then
+    love.graphics.print("quitting"..string.rep(".",math.floor(escape_timer*4)),screen.x,screen.y,0,2,2)
+  end
+
   love.graphics.print(love.timer.getFPS(),1,1)
 end
 
 function love.keypressed(key)
-  if key=="escape" then
-    love.event.quit()
-  end
   if currentscene.keypressed then currentscene.keypressed(key) end
 end
 
