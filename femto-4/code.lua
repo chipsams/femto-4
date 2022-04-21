@@ -364,6 +364,7 @@ function s.keypressed(key)
   elseif key=="e" and ctrlheld then
     errorcheck(s.editing_line)
   elseif key=="r" and ctrlheld then
+    ctrlheld=false
     loadcode()
   end
   if s.editing_line~=lastline and s.code[s.editing_line] and s.code[lastline] then
