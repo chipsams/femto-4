@@ -1,10 +1,17 @@
 require"utils"
 
+local function docolour(c)
+  c=c or 0
+  c=bit.band(c,3)
+  return mem[0x34a+c]
+end
+
 --- plots a pixel, atomic operation for most graphics
 ---@param x number
 ---@param y number
 ---@param c number
 function pset(x,y,c)
+  c=docolour(c)
   x,y,c=flr(x,y,c)
   if x>=0 and x<=63 and y>=0 and y<=47 then
     local i=math.floor(x/4+y*16)
@@ -91,6 +98,7 @@ end
 function cls(c)
   c=c or mem[0x34f]
   c=c%4
+  c=docolour(c)
   local byte=0
   for _bit=0,3 do byte=byte+bit.lshift(c,_bit*2) end
   for l=screenpos,0xaff do
@@ -149,7 +157,7 @@ function setline(x1,x2,y,c)
   c=c%4
   if sign(dx1-x1)==sign(dx2-x2) and dx2-x2~=0 then return end
   local byte=0
-  for _bit=0,3 do byte=byte+bit.lshift(c,_bit*2) end
+  for _bit=0,3 do byte=byte+bit.lshift(docolour(c),_bit*2) end
   memset(screenpos+math.ceil(dx1/4)+y*16,math.floor(dx2/4)-math.floor((dx1+7)/4),byte)
   for l=dx1,math.ceil(dx1/4)*4 do
     pset(l,y,c)

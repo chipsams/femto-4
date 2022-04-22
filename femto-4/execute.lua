@@ -1,5 +1,12 @@
 local s={}
 
+function s.quit()
+  for l=0,3 do
+    mem[0x346+l]=l  --init screen pallete
+    mem[0x34a+l]=l  --init draw pallete
+  end
+  currentscene=s.returnscene or codestate
+end
 
 local pow2={}
 for l=0,64 do pow2[l]=2^l-1 end
@@ -314,8 +321,8 @@ local ops_definition={
     local tokens=tokenize(line)
     local _,v=unpack(tokens)
     if not v then return false end
-    if reg_names[v] then print("is reg") return true,bitpack({5,3,8},id,reg_names[v],0) end
-    if better_tonumber(v)  then print("is num") return true,bitpack({5,3,2,1,5},id,0,better_tonumber(v),1,0) end
+    if reg_names[v] then return true,bitpack({5,3,8},id,reg_names[v],0) end
+    if better_tonumber(v) then return true,bitpack({5,3,2,1,5},id,0,better_tonumber(v),1,0) end
     return false
   end,". r|n"},
   {{"jmp","cjp"},function(b1,b2)
@@ -438,7 +445,7 @@ local ops_definition={
       return true,bytes
     end
     return false,{0,0}
-  end,". r|n r"},
+  end,". r|n r"}
 }
 local ops={}
 local op_parse={}
@@ -558,7 +565,7 @@ function s.update(dt)
 end
 
 function s.keypressed(key)
-  if key=="backspace" then currentscene=codestate end
+  if key=="backspace" then s.quit() end
 end
 
 function s.writeinstruction(write_line,stage)

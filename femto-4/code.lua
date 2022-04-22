@@ -20,7 +20,7 @@ end
 
 function match_tokens(matchline,pattern)
   local tokens,token_ranges=tokenize(matchline)
-  print(unpack(tokens))
+  --print(unpack(tokens))
   local errors={}
   local pattern_parts={}
   pattern:gsub("%S+",function(v)
@@ -42,9 +42,9 @@ function match_tokens(matchline,pattern)
   while tok_i<=#tokens do
     if #pattern_parts==0 then table.insert(errors,{c=1,token="",range={#matchline,#matchline-1},error="too many tokens!"}) return errors end
     local token=tokens[tok_i]
-    print(pattern_parts[1].optional and "?" or "",unpack(pattern_parts[1]))
+    --print(pattern_parts[1].optional and "?" or "",unpack(pattern_parts[1]))
     local success,err=match(token,pattern_parts[1])
-    print(pattern_parts[1].original,success and "accepted" or "rejected",token,matchline:sub(token_ranges[tok_i][1],token_ranges[tok_i][2]))
+    --print(pattern_parts[1].original,success and "accepted" or "rejected",token,matchline:sub(token_ranges[tok_i][1],token_ranges[tok_i][2]))
     if pattern_parts[1].optional and not success then
       table.remove(pattern_parts,1)
     else
@@ -65,7 +65,7 @@ function match_tokens(matchline,pattern)
 end
 
 local function errorcheck(linenum)
-  print(("\n"):rep(10))
+  --print(("\n"):rep(10))
   local o_chkline=s.code[linenum]
   local chkline=o_chkline
   s.errors[linenum]={}
@@ -80,7 +80,7 @@ local function errorcheck(linenum)
         error.range[2]=error.range[2]+colon
       end
     end
-    for _,error in pairs(errors) do print(error.error,o_chkline:sub(error.range[1],error.range[2])) end
+    --for _,error in pairs(errors) do print(error.error,o_chkline:sub(error.range[1],error.range[2])) end
     s.errors[linenum]=errors
   end
 end
@@ -107,7 +107,7 @@ local shiftheld=false
 
 local function resetselect()
   if not shiftheld and selecting then
-    print("deselected",shiftheld)
+    --print("deselected",shiftheld)
     selecting=false
   end
 end
@@ -166,12 +166,13 @@ s.changed=true
 
 local mouseselect=false
 
-local function loadcode()
+function loadcode()
   if s.changed then
     s.changed=false
     execstate.writeinstructions(s.code)
   end
   execstate.init()
+  execstate.returnscene=currentscene
   currentscene=execstate
 end
 
@@ -189,7 +190,7 @@ function s.update()
         s.select_line,s.select_row=s.editing_line,s.editing_row
       end
     end
-    if mouse.y<=4 then loadcode() end
+    --if mouse.y<=4 then loadcode() end
   end
 end
 
@@ -197,6 +198,7 @@ function s.mousedown()
   if shiftheld then
     mouseselect=true
   end
+  buttons.mousedown()
 end
 
 function s.draw()
@@ -254,7 +256,8 @@ function s.draw()
     rectfill(0,42,63,47,1)
     rectfill(0,42,63,47,1)
     sc_write("code",1,1,0)
-    
+    buttons.draw()
+
     plot_imgdata(cursor,mouse.x,mouse.y,5)
 end
 

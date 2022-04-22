@@ -145,6 +145,7 @@ function love.load()
   codestate=require"code"
   drawstate=require"draw"
   teststate=require"test" --test state isn't to be shown to the user, really
+  buttons  =require"editorbuttons"
 
   --change this to change the starting state
   --at the moment should be codestate!
@@ -157,7 +158,10 @@ t=0
 code={}
 
 ([[
- 
+cls 0
+lop:adc x + 1
+plt x x x
+jmp lop
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.
@@ -235,4 +239,8 @@ end
 
 function love.wheelmoved(x,y)
   if currentscene.wheelmoved then currentscene.wheelmoved(x,y) end
+end
+
+function love.mousepressed()
+  if currentscene.mousedown then currentscene.mousedown() end
 end

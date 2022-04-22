@@ -8,7 +8,7 @@ s.sprite=0
 s.spritepagex=0
 s.spritepagey=0
 s.colour=1
-s.spritescale=2
+s.spritescale=1
 
 local openx=59-32 
 local closedx=59
@@ -179,7 +179,8 @@ function s.draw()
   end
   
   --title bar
-  sc_write(mouse.x..","..mouse.y,1,1,0)
+  sc_write("draw",1,1,0)
+  buttons.draw()
   if rdown then
     cls()
     sspr(0,0,0,16,12,1)
@@ -196,8 +197,9 @@ function s.keypressed(key)
     s.sprite=s.sprite+s.spritescale
   end
   s.sprite=math.max(0,s.sprite)
-  if key=="r" then
-    rdown=true
+  if key=="r" and ctrldown then
+    ctrldown=false
+    loadcode()
   end
   local sx,sy=s.sprite%16*4,math.floor(s.sprite/16)*4
   if key=="left" then
@@ -258,5 +260,8 @@ function s.wheelmoved(_,y)
   end
 end
   
+function s.mousedown()
+  buttons.mousedown()
+end
 
 return s
