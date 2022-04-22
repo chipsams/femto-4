@@ -205,7 +205,6 @@ function s.draw()
     local yoffset=s.code_scrollpos*4
     cls(0)
     i=math.floor(t*30)%4
-    --mem[0x346+i]=(mem[0x346+i]+1)%16
     local showcursor=t-math.floor(t)>.5
     for i,code_line in ipairs(s.code) do
       local colon=code_line:find(":",nil,true) or 0

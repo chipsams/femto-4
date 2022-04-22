@@ -3,7 +3,7 @@ require"utils"
 local function docolour(c)
   c=c or 0
   c=bit.band(c,3)
-  return mem[0x34a+c]
+  return mem[mem_map.draw_pal+c]
 end
 
 --- plots a pixel, atomic operation for most graphics
@@ -15,14 +15,14 @@ function pset(x,y,c)
   x,y,c=flr(x,y,c)
   if x>=0 and x<=63 and y>=0 and y<=47 then
     local i=math.floor(x/4+y*16)
-    mem[i+screenpos] = bit.bor(bit.band(mem[i+screenpos],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
+    mem[i+mem_map.screen] = bit.bor(bit.band(mem[i+mem_map.screen],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
   end
 end
 
 function pget(x,y)
   if x>=0 and x<=63 and y>=0 and y<=47 then
     local i=math.floor(x/4+y*16)
-    return bit.band(bit.rshift(mem[i+screenpos],x%4*2),3)
+    return bit.band(bit.rshift(mem[i+mem_map.screen],x%4*2),3)
   end
   return 0
 end
@@ -78,7 +78,7 @@ end
 ---@param y1 number
 ---@param c number
 function line(x0, y0, x1, y1, c)
-  c=c or mem[0x34f]
+  c=c or 0
   x0, y0, x1, y1, c=flr(x0, y0, x1, y1, c)
   if math.abs(y1 - y0) < math.abs(x1 - x0) then
     if x0 > x1 then
@@ -96,12 +96,12 @@ function line(x0, y0, x1, y1, c)
 end
 
 function cls(c)
-  c=c or mem[0x34f]
+  c=c or 0
   c=c%4
   c=docolour(c)
   local byte=0
   for _bit=0,3 do byte=byte+bit.lshift(c,_bit*2) end
-  for l=screenpos,0xaff do
+  for l=mem_map.screen,mem_map.screen+mem_map.screen_length do
     mem[l]=byte
   end
 end
@@ -112,13 +112,11 @@ end
 ---@param y number
 ---@param c number
 function sc_write(st,x,y,c)
-  c=c or mem[0x34f]
   c=c or 0
-  mem[0x34f]=c
   local linestart=x or 1
   if not (c or y) then c,x=x,nil end
-  x=x or memsigned[0x344]
-  y=y or memsigned[0x345]
+  x=x or memsigned[mem_map.print_cursor_x]
+  y=y or memsigned[mem_map.print_cursor_y]
   x,y,c=flr(x,y,c)
 
   st=tostring(st == nil and "" or st)
@@ -138,8 +136,8 @@ function sc_write(st,x,y,c)
       y=y+4
     end
   end
-  memsigned[0x344]=x
-  memsigned[0x345]=y
+  memsigned[mem_map.print_cursor_x]=x
+  memsigned[mem_map.print_cursor_y]=y
 end
 
 --- fills a horizontal line with one color
@@ -158,7 +156,7 @@ function setline(x1,x2,y,c)
   if sign(dx1-x1)==sign(dx2-x2) and dx2-x2~=0 then return end
   local byte=0
   for _bit=0,3 do byte=byte+bit.lshift(docolour(c),_bit*2) end
-  memset(screenpos+math.ceil(dx1/4)+y*16,math.floor(dx2/4)-math.floor((dx1+7)/4),byte)
+  memset(mem_map.screen+math.ceil(dx1/4)+y*16,math.floor(dx2/4)-math.floor((dx1+7)/4),byte)
   for l=dx1,math.ceil(dx1/4)*4 do
     pset(l,y,c)
   end
@@ -176,13 +174,13 @@ end
 function sset(x,y,c)
   if x>=0 and x<=63 and y>=0 and y<=47 then
     local i=math.floor(x/4+y*16)
-    mem[i+spritepos] = bit.bor(bit.band(mem[i+spritepos],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
+    mem[i+mem_map.sprites] = bit.bor(bit.band(mem[i+mem_map.sprites],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
   end
 end
 function sget(x,y)
   if x>=0 and x<=63 and y>=0 and y<=47 then
     local i=math.floor(x/4+y*16)
-    return bit.band(bit.rshift(mem[i+spritepos],x%4*2),3)
+    return bit.band(bit.rshift(mem[i+mem_map.sprites],x%4*2),3)
   end
   return 0
 end
@@ -197,12 +195,14 @@ end
 function sspr(sp,x,y,w,h,scale)
   local w=w or 1
   local h=h or 1
+  local scale=scale or 1
   local sx=sp%16*4
   local sy=math.floor(sp/16)*4
   for lx=0,w*4-1 do
     for ly=0,h*4-1 do
       local dx,dy=x+lx*scale,y+ly*scale
-      rectfill(dx,dy,dx+scale-1,dy+scale-1,sget(sx+lx,sy+ly))
+      local c=sget(sx+lx,sy+ly)
+      if mem[mem_map.transparency_pal+c]>0 then rectfill(dx,dy,dx+scale-1,dy+scale-1,c) end
     end
   end  
 end

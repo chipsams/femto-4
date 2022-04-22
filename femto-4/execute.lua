@@ -2,8 +2,9 @@ local s={}
 
 function s.quit()
   for l=0,3 do
-    mem[0x346+l]=l  --init screen pallete
-    mem[0x34a+l]=l  --init draw pallete
+    mem[mem_map.screen_pal+l]=editor_pal[l+1]  --init screen pallete
+    mem[mem_map.draw_pal+l]=l  --init draw pallete
+    mem[mem_map.transparency_pal+l]=1  --init transparency pallete
   end
   currentscene=s.returnscene or codestate
 end
@@ -163,12 +164,12 @@ local stats={
   {"mouse_mb",function() return mouse.mb and 1 or 0 end},
   {"mouse_rb",function() return mouse.rb and 1 or 0 end},
   {"cpu",function() return s.cpubudget end},
-  {"stk_size",function() return mem[0x35f] end},
-  {"stk_peek",function() if mem[0x35f]>0 then return mem[0x360+mem[0x35f]-1] else return 0 end end},
-  {"last_x",function() return memsigned[0x350] end},
-  {"last_y",function() return memsigned[0x351] end},
-  {"print_x",function() return memsigned[0x344] end},
-  {"print_y",function() return memsigned[0x345] end},
+  {"stk_size",function() return mem[mem_map.stack_pointer] end},
+  {"stk_peek",function() if mem[mem_map.stack_pointer]>0 then return mem[mem_map.stack_start+mem[mem_map.stack_pointer]-1] else return 0 end end},
+  {"last_x",function() return memsigned[mem_map.last_draw_x] end},
+  {"last_y",function() return memsigned[mem_map.last_draw_y] end},
+  {"print_x",function() return memsigned[mem_map.print_cursor_x] end},
+  {"print_y",function() return memsigned[mem_map.print_cursor_y] end},
 }
 local stat_names={}
 local stat_funcs={}
@@ -199,20 +200,27 @@ local ops_definition={
   end,function()
     return true,{0,0}
   end,"."},
-  {{"add","sub"},function(b1,b2)--add
-    local _,r1,r2,r3,negate_r2,absolute=bitsplit(b1,b2,{5,3,3,3,1,1})
+  {{"add","sub","mul","div"},function(b1,b2)--add
+    local _,r1,r2,r3,op=bitsplit(b1,b2,{5,3,3,3,2})
     r1,r2,r3=get_regs(r1,r2,r3)
-    local result=r1()+r2()*(negate_r2==1 and -1 or 1)
-    --print(r1(),"+",r2(),"=",result)
-    r3(result)
+    if op==0 then     r3(r1()+r2())
+    elseif op==1 then r3(r1()-r2())
+    elseif op==2 then r3(r1()*r2())
+    elseif op==3 then r3(r1()/r2()) end
   end,function(id,line,_,linenum)
+    local opnames={add=0,sub=1,mul=2,div=3}
     local tokens=tokenize(line)
+    local opid=0
     local opname,r1n,r2n,r3n=unpack(tokens)
+
+    if not opid then return false end
+
     local r1,r2,r3=get_reg_names(r1n,r2n,r3n)
     if not (r1 and r2 and r3) then
       return false
     end
-    return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,opname=="sub" and 1 or 0,0)
+    if not opnames[opname] then return false end
+    return true,bitpack({5,3,3,3,2},id,r1,r2,r3,opnames[opname])
   end,". r£r1 r£r2 r£r3"},
   {"adc",function(b1,b2)--add constant
     local _,t1,negative,value=bitsplit(b1,b2,{5,3,1,7})
@@ -224,11 +232,29 @@ local ops_definition={
     local tokens=tokenize(line)
     local _,r1,sign,value=unpack(tokens)
     --print('"'..(better_tonumber(value) or "?")..'"')
+    if not value and better_tonumber(sign) then sign,value="+",sign end
     if not (sign=="-" or sign=="+") then print"no sign" return false end
     if not reg_names[r1] then print"no reg" return false end
     if not better_tonumber(value) then print"not a number" return false end
     return true,bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,better_tonumber(value))
-  end,". r '[+%-]£no_sign n"},
+  end,". r '[+%-]? n"},
+  {"ldc",function(b1,b2)
+    local b3=mem[s.pc+2]
+    s.pc=s.pc+1
+    local _,r=bitsplit(b1,0,{5,3,8})
+    r=get_regs(r)
+    local negative,v=bitsplit(b2,b3,{1,15})
+    r(negative==1 and -v or v)
+  end,function(id,line)
+    local tokens=tokenize(line)
+    local _,r,sign,v=unpack(tokens)
+    if not v then v,sign=sign,nil end
+    r=get_reg_names(r)
+    v=better_tonumber(v)
+    if not r then return end
+    if not v then return end
+    return true,bitpack({5,3,1,15},id,r,(sign=="-") and 1 or 0,v)
+  end,". r '%-|'%+? n"},--load constant
   {"plt",function(b1,b2)--pset
     local _,r1,r2,or3,_,literal=bitsplit(b1,b2,{5,3,3,3,1,1})
     local r1,r2,r3=get_regs(r1,r2,or3)
@@ -313,10 +339,33 @@ local ops_definition={
     --for _,byte in ipairs(bytes) do print(basen(byte,2,8)) end
     return true,bytes
   end,". r r r r|n"},
+  {"spr",function(b1,b2)
+    local _,r1,r2,r3,const_spr=bitsplit(b1,b2,{5,3,3,3,1,1})
+    r1,r2,r3=get_regs(r1,r2,r3)
+    if const_spr==1 then
+      local b3=mem[s.pc+2]
+      s.pc=s.pc+1
+      --print(b3)
+      sspr(b3  ,r2(),r3(),1,1,1)
+    else
+      sspr(r1(),r2(),r3(),1,1,1)
+    end
+  end,function(id,line)
+    local tokens=tokenize(line)
+    local _,or1,r2,r3=unpack(tokens)
+    local r1,r2,r3=get_reg_names(or1,r2,r3)
+    --print(r1,r2,r3)
+    if not (r2 and r3) then return false end
+    if not r1 and not better_tonumber(or1) then return false end
+    if better_tonumber(or1) then
+      return true,bitpack({5,3,3,3,1,1,8},id, 0,r2,r3, 1,0,better_tonumber(or1))
+    end
+    return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,0,0)
+  end,". r|n r r"},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100
     local _,r1,override_col,override=bitsplit(b1,b2,{5,3,2,1,5})
-    cls(override and override_col or regs[r1]())
+    cls(override==1 and override_col or s.registers[r1]())
   end,function(id,line)
     local tokens=tokenize(line)
     local _,v=unpack(tokens)
@@ -411,7 +460,6 @@ local ops_definition={
     return true,bitpack({5,11},id,0)
   end,"."},
   {{"pek","pok"},function(b1,b2)
-    local b3,b4=mem[s.pc],mem[s.pc+1]
     local _,peek,t_reg,reg_mode,a_reg,_=bitsplit(b1,b2,{5,1,3,1,3,3})
     t_reg,a_reg=get_regs(t_reg,a_reg)
     local adr
@@ -419,8 +467,10 @@ local ops_definition={
       adr=a_reg()
     else
       s.pc=s.pc+2
+      local b3,b4=mem[s.pc],mem[s.pc+1]
       adr=bit.bor(bit.lshift(b3,8),b4)
     end
+    print(basen(adr,16,3))
     if peek==1 then
       t_reg(mem[adr])
     else
@@ -439,8 +489,9 @@ local ops_definition={
       local bytes=bitpack({5,1,3,1,3, 3},id,op=="pek" and 1 or 0,reg,1,adr_reg,0)
       return true,bytes
     elseif num_adr and reg then
+      print(basen(num_adr,16,3))
       local bytes=bitpack({5,1,3,1,3, 3},id,op=="pek" and 1 or 0,reg,0,0,0)
-      table.insert(bytes,bit.rshift(num_adr,8))
+      table.insert(bytes,bit.band(bit.rshift(num_adr,8),0xff))
       table.insert(bytes,bit.band(num_adr,0xff))
       return true,bytes
     end
@@ -498,7 +549,7 @@ local function reg(initv,fn)
   local v=initv
   local fn=fn
   if fn then
-    local loaded_fn,err=load(fn,nil,nil,{s=s,math=math,mem=mem})
+    local loaded_fn,err=load(fn,nil,nil,{s=s,math=math,mem=mem,mem_map=mem_map})
     if not loaded_fn then
       print("error loading register:",err)
     else
@@ -516,8 +567,15 @@ end
 
 function s.init()
   s.cpubudget=0
-  mem[0x35f]=0
+  mem[mem_map.stack_pointer]=0
 
+  for l=0,3 do
+    mem[mem_map.screen_pal+l]=l  --init screen pallete
+    mem[mem_map.draw_pal+l]=l  --init draw pallete
+    mem[mem_map.transparency_pal+l]=1  --init transparency pallete
+  end
+  mem[mem_map.transparency_pal]=0
+  
   s.registers={
     reg(0),reg(0),reg(0), -- a-c (gp)
     reg(0),reg(0), -- x-y (gp)
@@ -528,12 +586,12 @@ function s.init()
     end]=]), --rnd
     reg(0,[=[return function(w)
       if w then
-        mem[0x360+mem[0x35f]]=w 
-        mem[0x35f]=mem[0x35f]+1
+        mem[mem_map.stack_start+mem[mem_map.stack_pointer]]=w 
+        mem[mem_map.stack_pointer]=mem[mem_map.stack_pointer]+1
       else
-        if mem[0x35f]>0 then
-          mem[0x35f]=mem[0x35f]-1
-          return mem[0x360+mem[0x35f]]
+        if mem[mem_map.stack_pointer]>0 then
+          mem[mem_map.stack_pointer]=mem[mem_map.stack_pointer]-1
+          return mem[mem_map.stack_start+mem[mem_map.stack_pointer]]
         else
           return 0
         end
@@ -541,7 +599,7 @@ function s.init()
     end]=])--stack
   }
   s.running=true
-  s.pc=0xb00
+  s.pc=mem_map.code
   s.labels={}
 end
 s.init()
@@ -604,8 +662,8 @@ function isvalid(chk_line,stage,linenumber)
 end
 
 function s.writeinstructions(code)
-  memset(0xb00,0x400,0)
-  s.writei=0xb00
+  memset(mem_map.code,mem_map.code_length,0)
+  s.writei=mem_map.code
   local strippedcode={}
   --1: go through, only put in instructions which are valid.
   for l=1,#code do
@@ -629,7 +687,7 @@ function s.writeinstructions(code)
     s.writeinstruction(strippedcode[l],2)
   end
   --3: write then all into memory.
-  s.writei=0xb00
+  s.writei=mem_map.code
   for l=1,#strippedcode do
     s.writeinstruction(strippedcode[l],3)
   end

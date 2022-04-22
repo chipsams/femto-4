@@ -38,7 +38,7 @@ local scale=8
 local colourpickscale=5
 
 function s.update()
-  screenpos=0x400
+  mem_map.screen=0x400
   if not (mouse.lb or mouse.mb or mouse.rb) then s.clickmode=nil end
 
   local x,tab=convertpos(mouse.x,mouse.y,59,17,6,6)
@@ -83,7 +83,7 @@ function s.update()
   local onpage=pagex>=0 and pagex<=3 and pagey>=0 and pagey<=3
   if mouse.lb and canclick(onpage,"page") then s.sprite=s.spritepagex+s.spritepagey*16+pagex+pagey*16 end
 
-  screenpos=0x800
+  mem_map.screen=0x800
 end
 
 function s.draw()

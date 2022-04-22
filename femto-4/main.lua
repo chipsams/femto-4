@@ -10,15 +10,43 @@ else
 end
 print(bit)
 
+editor_pal={
+  0,1,2,3
+}
+
+mem_map={
+
+  print_cursor_x=0x344,
+  print_cursor_y=0x345,
+
+  screen_pal=0x346,--to 349
+  draw_pal=0x34a,--to 34d
+  transparency_pal=0x34e,--to 351
+
+  last_draw_x=0x352,
+  last_draw_y=0x353,
+
+  stack_pointer=0x35f,
+  stack_start=0x360,--to 3ff
+
+  sprites=0x400,--to 7ff
+
+  screen=0x800, --to aff
+  screen_length=0xaff-0x800,
+
+  code=0xb00,   --to fff
+  code_length=0xfff-0xb00,
+}
+
 -- 000 - 0ff : aloc memory
 -- 100 - 33f : general purpouse
 -- 340 - 35f : poke flags/memory map stuff (e.g. button state)
--- 340-343: button bitmasks (341-343 likely unused for a while, multiple controlers sounds annoying to implement)
 -- 344,345: print cursor
 -- 346-349: screen pallete
 -- 34a-34e: draw pallete
 -- 34f: draw colour
 -- 350,351: last draw x,y. used for line & rect
+-- 352-355: transparency pallete
 -- 35f: stack pointer
 -- 360 - 3ff : stack
 -- 400 - 7ff : sprites [2 bpp, 4x4] = 192 sprites
@@ -83,8 +111,6 @@ end
 
 function love.load()
   love.graphics.setDefaultFilter( "nearest" )
-  screenpos=0x800
-  spritepos=0x400
 
   --these point to the same data, but one sets/gets in the range 0 to 255 and the other sets/gets in the range -128 to 127.
   if ffi then
@@ -126,12 +152,6 @@ function love.load()
   page_select_cursor_png=love.image.newImageData("assets/page_select_cursor.png")
   cursor=love.image.newImageData("assets/cursor.png")
   pal=love.image.newImageData("assets/pallete.png")
-  for l=0,3 do
-    mem[0x346+l]=l  --init screen pallete
-    mem[0x34a+l]=l  --init draw pallete
-  end
-
-  mem[0x346]=0
 
   love.window.setIcon(love.image.newImageData("assets/logo.png"))
   love.window.setTitle("femto-4")
@@ -150,6 +170,12 @@ function love.load()
   --change this to change the starting state
   --at the moment should be codestate!
   currentscene=codestate
+
+  for l=0,3 do
+    mem[mem_map.screen_pal+l]=editor_pal[l+1]  --init screen pallete
+    mem[mem_map.draw_pal+l]=l  --init draw pallete
+    mem[mem_map.transparency_pal+l]=1  --init transparency pallete
+  end
 end
 
 t=0
@@ -158,10 +184,8 @@ t=0
 code={}
 
 ([[
-cls 0
-lop:adc x + 1
-plt x x x
-jmp lop
+lcn x 0x40
+deb x
 ]]):gsub("[^\n]+",function(v)
   table.insert(code,v)
 end)--pre-populate the code area.
@@ -181,7 +205,7 @@ function love.update(dt)
   else
     escape_timer=0
   end
-  --screenpos=love.mouse.isDown(1) and 0x800 or 0x400
+  
   t=t+dt
   local mx,my=love.mouse.getPosition()
   mx=math.floor((mx-screen.x)/screen.scale)
@@ -205,11 +229,11 @@ function love.draw()
   
 
   for l=0,3 do
-    local palindex=mem[0x346+l]
+    local palindex=mem[mem_map.screen_pal+l]
     r[l],g[l],b[l]=pal:getPixel(palindex%16,math.floor(palindex/16))
   end
   renderdata:mapPixel(function(x,y)
-    local v=bit.rshift(mem[math.floor(bit.rshift(x,2)+bit.lshift(y,4))+screenpos],x%4*2)%4
+    local v=bit.band(bit.rshift(mem[math.floor(bit.rshift(x,2)+bit.lshift(y,4))+mem_map.screen],bit.lshift(bit.band(x,3),1)),3)
     --return v,v,v
     return r[v],g[v],b[v]
   end)
