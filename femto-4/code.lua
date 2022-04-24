@@ -64,7 +64,7 @@ function match_tokens(matchline,pattern)
   return errors
 end
 
-local function errorcheck(linenum)
+function s.errorcheck(linenum)
   --print(("\n"):rep(10))
   local o_chkline=s.code[linenum]
   local chkline=o_chkline
@@ -276,7 +276,7 @@ function s.textinput(key)
     end
   end
   
-  errorcheck(s.editing_line)
+  s.errorcheck(s.editing_line)
 end
 
 
@@ -306,7 +306,7 @@ function s.keypressed(key)
       remove_selected("")
     else
       if s.editing_row==0 and s.editing_line>1 then
-        s.code[s.editing_line-1],s.editing_row=s.code[s.editing_line-1]..code[s.editing_line],#s.code[s.editing_line-1]
+        s.code[s.editing_line-1],s.editing_row=s.code[s.editing_line-1]..s.code[s.editing_line],#s.code[s.editing_line-1]
         table.remove(s.code,s.editing_line)
         table.remove(s.errors,s.editing_line)
         s.editing_line=s.editing_line-1
@@ -322,8 +322,8 @@ function s.keypressed(key)
       table.insert(s.code,s.editing_line+1,cur_line:sub(s.editing_row+1,-1))
       table.insert(s.errors,s.editing_line+1,{})
       s.code[s.editing_line]=cur_line:sub(1,s.editing_row) s.editing_line=s.editing_line+1 s.editing_row=0
-      errorcheck(s.editing_line)
-      errorcheck(s.editing_line-1)
+      s.errorcheck(s.editing_line)
+      s.errorcheck(s.editing_line-1)
     end
   elseif key=="lshift" then
     if not selecting then
@@ -333,6 +333,12 @@ function s.keypressed(key)
     shiftheld=true
   elseif key=="lctrl" then ctrlheld=true
   elseif key=="space" then s.keypressed(" ")
+  elseif key=="s" and ctrlheld then
+    local txt=cart_manip.tostring()
+    love.system.setClipboardText(txt)
+  elseif key=="o" and ctrlheld then
+    local txt=love.system.getClipboardText()
+    cart_manip.fromstring(txt)
   elseif key=="c" and ctrlheld then
     if selecting and ctrlheld then
       local txt=get_selected()
@@ -345,12 +351,12 @@ function s.keypressed(key)
     local l=0
     for st in add_txt:gmatch("[^\n]+") do
       l=l+1
-      code[s.editing_line]=insert_char(code[s.editing_line],s.editing_row,st)
-      errorcheck(s.editing_line)
+      s.code[s.editing_line]=insert_char(s.code[s.editing_line],s.editing_row,st)
+      s.errorcheck(s.editing_line)
       s.editing_row=s.editing_row+#st
       if l<=newlines then
         s.keypressed("return")
-        errorcheck(s.editing_line)
+        s.errorcheck(s.editing_line)
       end
     end
   elseif key=="a" and ctrlheld then
@@ -364,7 +370,7 @@ function s.keypressed(key)
     love.system.setClipboardText(txt)
     remove_selected("")
   elseif key=="e" and ctrlheld then
-    errorcheck(s.editing_line)
+    s.errorcheck(s.editing_line)
   elseif key=="r" and ctrlheld then
     ctrlheld=false
     loadcode()
@@ -380,7 +386,7 @@ function s.keypressed(key)
   s.editing_line=mid(1,s.editing_line,#s.code)
   refresh_bounds()
   recalc_length()
-  errorcheck(s.editing_line)
+  s.errorcheck(s.editing_line)
 end
 
 function s.keyreleased(key)

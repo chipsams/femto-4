@@ -46,6 +46,26 @@ function lerp(a,b,t)
   return (1-t)*a+b*t
 end
 
+function trim(s)
+  return s:match "^%s*(.-)%s*$"
+end
+
+function parsecart(st)
+  local currentlabel="header"
+  local lastpos=0
+
+  local blocks={}
+  while true do
+    local lb_start,lb_end=st:find("__([%l%d_]+)__",lastpos)
+    if not lb_start then break end
+    blocks[currentlabel]=trim(st:sub(lastpos,lb_start-1))
+    currentlabel=st:sub(lb_start+2,lb_end-2)
+    lastpos=lb_end+1
+  end
+  blocks[currentlabel]=trim(st:sub(lastpos,#st))
+  return blocks
+end
+
 
 --https://stackoverflow.com/questions/3554315/lua-base-converter
 local floor,insert = math.floor, table.insert

@@ -161,6 +161,8 @@ function love.load()
   renderdata=love.image.newImageData(64,64)
   renderscreen=love.graphics.newImage(renderdata)
   
+  cart_manip=require"cart_manip"
+  
   execstate=require"execute"
   codestate=require"code"
   drawstate=require"draw"

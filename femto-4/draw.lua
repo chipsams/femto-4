@@ -2,7 +2,7 @@
 local s={}
 
 local rdown=false
-local ctrldown=false
+local ctrlheld=false
 
 s.sprite=0
 s.spritepagex=0
@@ -60,10 +60,10 @@ function s.update()
   local cx,cy=convertpos(mouse.x,mouse.y,2,7,scale/s.spritescale)
   local sx,sy=s.sprite%16*4,math.floor(s.sprite/16)*4
   local onspr=cx>=0 and cx<=s.spritescale*4-1 and cy>=0 and cy<=s.spritescale*4-1
-  if mouse.lb and canclick(onspr and not ctrldown,"draw") then
+  if mouse.lb and canclick(onspr and not ctrlheld,"draw") then
     pset(sx+cx,sy+cy,s.colour)
   end
-  if mouse.lb and canclick(onspr and ctrldown,"fill") then
+  if mouse.lb and canclick(onspr and ctrlheld,"fill") then
     local c=pget(sx+cx,sy+cy)
     for lx=0,4*s.spritescale-1 do
       for ly=0,4*s.spritescale-1 do
@@ -192,13 +192,18 @@ end
 function s.keypressed(key)
   if key=="q" then
     s.sprite=s.sprite-s.spritescale
-  end
-  if key=="e" then
+  elseif key=="e" then
     s.sprite=s.sprite+s.spritescale
+  elseif key=="s" and ctrlheld then
+    local txt=cart_manip.tostring()
+    love.system.setClipboardText(txt)
+  elseif key=="o" and ctrlheld then
+    local txt=love.system.getClipboardText()
+    cart_manip.fromstring(txt)
   end
   s.sprite=math.max(0,s.sprite)
-  if key=="r" and ctrldown then
-    ctrldown=false
+  if key=="r" and ctrlheld then
+    ctrlheld=false
     loadcode()
   end
   local sx,sy=s.sprite%16*4,math.floor(s.sprite/16)*4
@@ -239,7 +244,7 @@ function s.keypressed(key)
     end
   end
   if key=="lctrl" then
-    ctrldown=true
+    ctrlheld=true
   end
 end
 
@@ -248,7 +253,7 @@ function s.keyreleased(key)
     rdown=false
   end
   if key=="lctrl" then
-    ctrldown=false
+    ctrlheld=false
   end
 end
 
