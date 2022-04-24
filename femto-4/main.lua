@@ -182,16 +182,6 @@ end
 
 t=0
 
-
-code={}
-
-([[
-lcn x 0x40
-deb x
-]]):gsub("[^\n]+",function(v)
-  table.insert(code,v)
-end)--pre-populate the code area.
-
 function love.resize(w,h)
   --screen.scale=math.min(w*0.75,h)/48
   screen.scale=math.min(w,h)/64

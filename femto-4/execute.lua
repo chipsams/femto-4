@@ -71,6 +71,7 @@ function better_tonumber(v)
 end
 
 function tokenize(st)
+  st=st:gsub("~.*$","")
   local tokens={}
   local token_areas={}
   local k=1

@@ -1,5 +1,5 @@
 local s={}
-s.code=code or {}
+s.code={""}
 
 s.errors={}
 for l=1,#s.code do
@@ -67,22 +67,26 @@ end
 function s.errorcheck(linenum)
   --print(("\n"):rep(10))
   local o_chkline=s.code[linenum]
-  local chkline=o_chkline
+  
+  local chkline=o_chkline:gsub("~.*$","")
   s.errors[linenum]={}
   local colon=o_chkline:find(":")
   if colon then chkline=o_chkline:sub(colon+1,-1) end
   local name=chkline:match("([a-z]+)(.*)")
+  local errors={}
   if op_errorcheck[name] then
-    local errors=match_tokens(chkline,op_errorcheck[name])
-    if colon then
-      for _,error in pairs(errors) do
-        error.range[1]=error.range[1]+colon
-        error.range[2]=error.range[2]+colon
-      end
-    end
-    --for _,error in pairs(errors) do print(error.error,o_chkline:sub(error.range[1],error.range[2])) end
-    s.errors[linenum]=errors
+    errors=match_tokens(chkline,op_errorcheck[name])
+  else
+    if name then errors={{c=1,range={1,#name},error="not a valid op"}} end
   end
+  if colon then
+    for _,error in pairs(errors) do
+      error.range[1]=error.range[1]+colon
+      error.range[2]=error.range[2]+colon
+    end
+  end
+  --for _,error in pairs(errors) do print(error.error,o_chkline:sub(error.range[1],error.range[2])) end
+  s.errors[linenum]=errors
 end
 
 local function refresh_bounds()
@@ -246,7 +250,7 @@ function s.draw()
         else
           line(x1,y,x2,y,error.c)
         end
-        if mouse.x>x1-2 and mouse.x<x2+2 then
+        if mouse.x>x1-2 and mouse.x<x2+2 and mouse.y>=y-1 and mouse.y<=y+1 then
           sc_write(error.error,x1,y+2,1)
         end
       end

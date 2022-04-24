@@ -179,12 +179,9 @@ function s.draw()
   end
   
   --title bar
-  sc_write("draw",1,1,0)
   buttons.draw()
-  if rdown then
-    cls()
-    sspr(0,0,0,16,12,1)
-  end
+  sc_write("draw",1,1,0)
+  sc_write(s.sprite,1,43,0)
 
   plot_imgdata(cursor,mouse.x,mouse.y,5)
 end
