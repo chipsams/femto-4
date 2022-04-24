@@ -10,10 +10,6 @@ else
 end
 print(bit)
 
-editor_pal={
-  0,1,2,3
-}
-
 mem_map={
 
   print_cursor_x=0x344,
@@ -58,11 +54,22 @@ window={
   h=320,
   w=480
 }
+
 mouse={
   x=0,
   y=0,
   onscreen=false
 }
+local function updatemouse()
+  local mx,my=love.mouse.getPosition()
+  mx=math.floor((mx-screen.x)/screen.scale)
+  my=math.floor((my-screen.y)/screen.scale)
+  mouse.lb=love.mouse.isDown(1)
+  mouse.rb=love.mouse.isDown(2)
+  mouse.mb=love.mouse.isDown(3)
+  mouse.x,mouse.y=mx,my
+  mouse.onscreen = my==boundscreen_y(my) and mx==boundscreen_x(mx)
+end
 
 --because love.run doesn't seem to work over there?
 if love.system.getOS()~="Web" then
@@ -163,6 +170,7 @@ function love.load()
   
   cart_manip=require"cart_manip"
   
+  confstate=require"settings"
   execstate=require"execute"
   codestate=require"code"
   drawstate=require"draw"
@@ -171,10 +179,10 @@ function love.load()
 
   --change this to change the starting state
   --at the moment should be codestate!
-  currentscene=codestate
+  currentscene=confstate
 
   for l=0,3 do
-    mem[mem_map.screen_pal+l]=editor_pal[l+1]  --init screen pallete
+    mem[mem_map.screen_pal+l]=confstate.settings.editor_pal[l+1]  --init screen pallete
     mem[mem_map.draw_pal+l]=l  --init draw pallete
     mem[mem_map.transparency_pal+l]=1  --init transparency pallete
   end
@@ -199,14 +207,7 @@ function love.update(dt)
   end
   
   t=t+dt
-  local mx,my=love.mouse.getPosition()
-  mx=math.floor((mx-screen.x)/screen.scale)
-  my=math.floor((my-screen.y)/screen.scale)
-  mouse.lb=love.mouse.isDown(1)
-  mouse.rb=love.mouse.isDown(2)
-  mouse.mb=love.mouse.isDown(3)
-  mouse.x,mouse.y=mx,my
-  if my==boundscreen_y(my) and mx==boundscreen_x(mx) then mouse.onscreen=true end
+  updatemouse()
   if currentscene.update then currentscene.update(dt) end
   if currentscene.draw then currentscene.draw(t) end
 end
@@ -258,5 +259,6 @@ function love.wheelmoved(x,y)
 end
 
 function love.mousepressed()
+  updatemouse()
   if currentscene.mousedown then currentscene.mousedown() end
 end

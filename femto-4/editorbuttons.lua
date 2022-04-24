@@ -2,9 +2,10 @@ local s={}
 local st="hi"
 
 s.buttons={
+  {"s",confstate},
   {"c",codestate},
   {"d",drawstate},
-  {"r",execstate}
+  {"r",execstate},
 }
 
 

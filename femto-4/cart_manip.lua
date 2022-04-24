@@ -4,7 +4,7 @@ s={}
 function s.tostring()
   local txt=""
     txt=txt.."hi\n__code__\n"
-    txt=txt..table.concat(codestate.code,"\n")
+    txt=txt..table.concat(codestate.code,"\n"):gsub("\n(__[%l%d_]+__)","\n~%1")
     txt=txt.."\n__gfx__\n"
   local addlines={}
   local zerospan=0
@@ -50,11 +50,9 @@ function s.fromstring(st)
     local writepos=mem_map.sprites
     for row in blocks.gfx:gmatch("[^\n]+") do
       if row:find("/") then
-        print("emptyline",#row-1)
         memset(writepos,(#row-1)*16-1,0)
         writepos=writepos+(#row-1)*16
       else
-        print("nonemptyline")
         for l=1,#row-1,4 do
           print(row:sub(l,l+3))
           mem[writepos]=tonumber(row:sub(l,l+3):reverse(),4)

@@ -14,6 +14,34 @@ function sign(number)
   return number > 0 and 1 or (number == 0 and 0 or -1)
 end
 
+function deep_clone(t)
+  local nt={}
+  for k,v in pairs(t) do
+    nt[k]=type(v)=="table" and deep_clone(v) or v
+  end
+  return nt
+end
+function deep_default(t,def)
+  for k,v in pairs(def) do
+    if type(t[k])~=type(def[k]) then
+      t[k]=def[k]
+    end
+    if type(def[k])=="table" then deep_default(t[k],def[k]) end
+  end
+end
+
+function deep_print(tbl,indent)
+  indent=indent or ""
+  for k,v in pairs(tbl) do
+    if type(v)=="table" then
+      print(indent..k..":")
+      deep_print(v,"\t"..indent)
+    else
+      print(indent..k..":"..tostring(v))
+    end
+  end
+end
+
 --- string pad, appends a character to the start of a string til it hits a given length
 ---@param st string
 ---@param len number
@@ -56,10 +84,10 @@ function parsecart(st)
 
   local blocks={}
   while true do
-    local lb_start,lb_end=st:find("__([%l%d_]+)__",lastpos)
+    local lb_start,lb_end=st:find("\n__([%l%d_]+)__",lastpos)
     if not lb_start then break end
     blocks[currentlabel]=trim(st:sub(lastpos,lb_start-1))
-    currentlabel=st:sub(lb_start+2,lb_end-2)
+    currentlabel=st:sub(lb_start+3,lb_end-2)
     lastpos=lb_end+1
   end
   blocks[currentlabel]=trim(st:sub(lastpos,#st))
