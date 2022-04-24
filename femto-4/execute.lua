@@ -276,27 +276,28 @@ local ops_definition={
   {{"rst","lne","rct","frc"},function(b1,b2)
     local _,r1,r2,op,r3=bitsplit(b1,b2,{5,3,3,2,3})
     local r1,r2,r3=get_regs(r1,r2,r3)
-    local lx=memsigned[0x350]
-    local ly=memsigned[0x351]
+    local lx=memsigned[mem_map.last_draw_x]
+    local ly=memsigned[mem_map.last_draw_y]
     --print(lx,ly,r1(),r2())
-    local w=math.abs(lx-r1())+1
-    local h=math.abs(ly-r2())+1
+    local nx,ny=r1(),r2()
+    local w=math.abs(lx-nx)+1
+    local h=math.abs(ly-ny)+1
     local col=r3()
     --print("col:",col)
     --print("op:",op)
     if op==0 then
       s.cpubudget=s.cpubudget-w*h/64
-      line(lx,ly,r1(),r2(),col)
+      line(lx,ly,nx,ny,col)
     elseif op==1  then
       s.cpubudget=s.cpubudget-(w+h)
       --rect(3,8,6,16,2)
-      rect(lx,ly,r1(),r2(),col)
+      rect(lx,ly,nx,ny,col)
     elseif op==2  then
       s.cpubudget=s.cpubudget-w*h/16
-      rectfill(lx,ly,r1(),r2(),col)
+      rectfill(lx,ly,nx,ny,col)
     end
-    memsigned[0x350]=r1()
-    memsigned[0x351]=r2()
+    memsigned[mem_map.last_draw_x]=nx
+    memsigned[mem_map.last_draw_y]=ny
   end,function(id,line)
     local ops={lne=0,rct=1,frc=2,rst=3}
     --lne x y 2
