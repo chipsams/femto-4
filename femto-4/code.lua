@@ -235,12 +235,12 @@ function s.draw()
         if not(s.editing_line==s.select_line and s.editing_row==s.select_row) then rect(x1,i*4+1-yoffset,x2,i*4+5-yoffset,3) end
       end
       if colon>0 then
-        sc_write(pad(code_line:sub(1,colon),4," "),1,i*4+2-yoffset,2)
+        sc_write(pad(code_line:sub(1,colon),4," "),1,i*4+2-yoffset,mem[mem_map.hirez]==1 and 3 or 2)
       else
         sc_write(index,1,i*4+2-yoffset,3)
         sc_write(":",nil,nil,3)
       end
-      sc_write(displayline,17,i*4+2-yoffset,2)
+      sc_write(displayline,17,i*4+2-yoffset,mem[mem_map.hirez]==1 and 3 or 2)
       if i==s.editing_line and showcursor then sc_write("|",cursorpos(s.editing_line,s.editing_row),i*4+2-yoffset,1) end
       for _,error in pairs(s.errors[i]) do
         local x1,x2=cursorpos(i,error.range[1])-3,cursorpos(i,error.range[2])+1
