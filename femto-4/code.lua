@@ -218,7 +218,7 @@ function s.draw()
       local index=pad(tostring(i),3," ")
       --selection background
       if (sign(i-s.select_line) ~= sign(i-s.editing_line) or i==s.select_line) and t%0.5>.25 and selecting then
-        local x1,x2=-1,64
+        local x1,x2=-1,128
         local l_lect_line,l_lect_row=s.select_line,s.select_row
         local l_editing_line,l_editing_row=s.editing_line,s.editing_row
         if s.editing_line<s.select_line or (s.editing_line==s.select_line and s.editing_row<s.select_row) then
@@ -255,9 +255,9 @@ function s.draw()
         end
       end
     end
-    rectfill(0,0,63,4,1)
-    rectfill(0,42,63,47,1)
-    rectfill(0,42,63,47,1)
+    rectfill(0,0,127,4,1)
+    rectfill(0,42,127,47,1)
+    rectfill(0,42,127,47,1)
     sc_write("code",1,1,0)
     buttons.draw()
 

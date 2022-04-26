@@ -85,11 +85,6 @@ end
 
 function s.draw()
   cls(0)
-  
-  --top and bottom red bars
-  rectfill(0,0,63,4,1)
-  rectfill(0,42,63,47,1)
-
   --sprite drawing border
   rect(2,7,35,40,3)
   rectfill(1,6,34,39,0)
@@ -174,6 +169,11 @@ function s.draw()
     local dx,dy=s.visual_tabs[tabi.page].x+6+s.spritepagex*1.25,18+s.spritepagey*1.25
     plot_imgdata_1col(page_select_cursor_png,dx,dy,1)
   end
+  
+  
+  --top and bottom red bars
+  rectfill(0,0,127,4,1)
+  rectfill(0,42,127,47,1)
   
   --title bar
   buttons.draw()

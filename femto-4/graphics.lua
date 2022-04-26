@@ -29,12 +29,12 @@ end
 function pget(x,y)
   if mem[mem_map.hirez]==1 then
     if x>=0 and x<=127 and y>=0 and y<=47 then
-      local i=bit.rshift(x,3)+bit.rshift(y,4)
+      local i=bit.rshift(x,3)+bit.lshift(y,4)
       return bit.band(bit.rshift(mem[i+mem_map.screen],x%8),1)  
     end
   else
     if x>=0 and x<=63 and y>=0 and y<=47 then
-      local i=bit.rshift(x,2)+bit.rshift(y,4)
+      local i=bit.rshift(x,2)+bit.lshift(y,4)
       return bit.band(bit.rshift(mem[i+mem_map.screen],x%4*2),3)
     end
   end
@@ -198,19 +198,52 @@ end
 ---@param x number
 ---@param y number
 ---@param c number
+
 function sset(x,y,c)
-  if x>=0 and x<=63 and y>=0 and y<=47 then
-    local i=math.floor(x/4+y*16)
-    mem[i+mem_map.sprites] = bit.bor(bit.band(mem[i+mem_map.sprites],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
+  x,y,c=flr(x,y,c)
+  if mem[mem_map.hirez]==1 then
+    if x>=0 and x<=127 and y>=0 and y<=47 then
+      local i=bit.rshift(x,3)+bit.lshift(y,4)
+      mem[i+mem_map.sprites] = bit.bor(bit.band(mem[i+mem_map.sprites],bit.bnot(bit.lshift(1,bit.band(x,7)))),bit.lshift(c%2,bit.band(x,7)))
+    end
+  else
+    if x>=0 and x<=63 and y>=0 and y<=47 then
+      local i=bit.rshift(x,2)+bit.lshift(y,4)
+      mem[i+mem_map.sprites] = bit.bor(bit.band(mem[i+mem_map.sprites],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
+    end
   end
 end
+
 function sget(x,y)
-  if x>=0 and x<=63 and y>=0 and y<=47 then
-    local i=math.floor(x/4+y*16)
-    return bit.band(bit.rshift(mem[i+mem_map.sprites],x%4*2),3)
+  if mem[mem_map.hirez]==1 then
+    if x>=0 and x<=127 and y>=0 and y<=47 then
+      local i=bit.rshift(x,3)+bit.lshift(y,4)
+      return bit.band(bit.rshift(mem[i+mem_map.sprites],x%8),1)  
+    end
+  else
+    if x>=0 and x<=63 and y>=0 and y<=47 then
+      local i=bit.rshift(x,2)+bit.lshift(y,4)
+      return bit.band(bit.rshift(mem[i+mem_map.sprites],x%4*2),3)
+    end
   end
   return 0
 end
+
+--[[
+  function sset(x,y,c)
+    if x>=0 and x<=63 and y>=0 and y<=47 then
+      local i=math.floor(x/4+y*16)
+      mem[i+mem_map.sprites] = bit.bor(bit.band(mem[i+mem_map.sprites],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
+    end
+  end
+  function sget(x,y)
+    if x>=0 and x<=63 and y>=0 and y<=47 then
+      local i=math.floor(x/4+y*16)
+      return bit.band(bit.rshift(mem[i+mem_map.sprites],x%4*2),3)
+    end
+    return 0
+  end
+--]]
 
 --- plots from the spritesheet to the screen.
 ---@param sp number
