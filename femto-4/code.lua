@@ -165,6 +165,7 @@ s.select_line=1
 s.select_row=0
 
 s.code_scrollpos=0
+s.code_scrollrow=0
 
 s.changed=true
 
@@ -207,10 +208,14 @@ end
 
 function s.draw()
     local yoffset=s.code_scrollpos*4
+    local xoffset=s.code_scrollrow*4
     cls(0)
     i=math.floor(t*30)%4
     local showcursor=t-math.floor(t)>.5
-    for i,code_line in ipairs(s.code) do
+
+    for i=math.floor(s.code_scrollpos),s.code_scrollpos+10 do
+      local code_line=s.code[i]
+      if not code_line then goto continue end
       local colon=code_line:find(":",nil,true) or 0
       local displayline=code_line
       if colon then displayline=code_line:sub(colon+1,-1) end
@@ -218,7 +223,7 @@ function s.draw()
       local index=pad(tostring(i),3," ")
       --selection background
       if (sign(i-s.select_line) ~= sign(i-s.editing_line) or i==s.select_line) and t%0.5>.25 and selecting then
-        local x1,x2=-1,64
+        local x1,x2=-1,128
         local l_lect_line,l_lect_row=s.select_line,s.select_row
         local l_editing_line,l_editing_row=s.editing_line,s.editing_row
         if s.editing_line<s.select_line or (s.editing_line==s.select_line and s.editing_row<s.select_row) then
@@ -227,23 +232,23 @@ function s.draw()
           l_editing_line,l_editing_row=s.select_line,s.select_row
         end
         if i==l_lect_line then
-          x1=cursorpos(l_lect_line,l_lect_row)+1
+          x1=cursorpos(l_lect_line,l_lect_row)+1-xoffset
         end
         if i==l_editing_line then
-          x2=cursorpos(l_editing_line,l_editing_row)+1
+          x2=cursorpos(l_editing_line,l_editing_row)+1-xoffset
         end
         if not(s.editing_line==s.select_line and s.editing_row==s.select_row) then rect(x1,i*4+1-yoffset,x2,i*4+5-yoffset,3) end
       end
       if colon>0 then
-        sc_write(pad(code_line:sub(1,colon),4," "),1,i*4+2-yoffset,2)
+        sc_write(pad(code_line:sub(1,colon),4," "),1-xoffset,i*4+2-yoffset,mem[mem_map.hirez]==1 and 3 or 2)
       else
-        sc_write(index,1,i*4+2-yoffset,3)
+        sc_write(index,1-xoffset,i*4+2-yoffset,3)
         sc_write(":",nil,nil,3)
       end
-      sc_write(displayline,17,i*4+2-yoffset,2)
-      if i==s.editing_line and showcursor then sc_write("|",cursorpos(s.editing_line,s.editing_row),i*4+2-yoffset,1) end
+      sc_write(displayline,17-xoffset,i*4+2-yoffset,mem[mem_map.hirez]==1 and 3 or 2)
+      if i==s.editing_line and showcursor then sc_write("|",cursorpos(s.editing_line,s.editing_row)-xoffset,i*4+2-yoffset,1) end
       for _,error in pairs(s.errors[i]) do
-        local x1,x2=cursorpos(i,error.range[1])-3,cursorpos(i,error.range[2])+1
+        local x1,x2=cursorpos(i,error.range[1])-3-xoffset,cursorpos(i,error.range[2])+1-xoffset
         local y=i*4-yoffset+5
         if x2<=x1 then
           rect(x1,y-1,x1+2,y+1,error.c)
@@ -251,13 +256,14 @@ function s.draw()
           line(x1,y,x2,y,error.c)
         end
         if mouse.x>x1-2 and mouse.x<x2+2 and mouse.y>=y-1 and mouse.y<=y+1 then
-          sc_write(error.error,x1,y+2,1)
+          sc_write(error.error,x1-xoffset,y+2,1)
         end
       end
+      ::continue::
     end
-    rectfill(0,0,63,4,1)
-    rectfill(0,42,63,47,1)
-    rectfill(0,42,63,47,1)
+    rectfill(0,0,127,4,1)
+    rectfill(0,42,127,47,1)
+    rectfill(0,42,127,47,1)
     sc_write("code",1,1,0)
     buttons.draw()
 
@@ -385,12 +391,14 @@ function s.keypressed(key)
     s.editing_row=s.editing_row-lastcolon+colon
     while s.editing_line<s.code_scrollpos+2 and s.code_scrollpos>0 do s.code_scrollpos=s.code_scrollpos-.5 end
     while s.editing_line>s.code_scrollpos+7.5 do s.code_scrollpos=s.code_scrollpos+.5 end
-
   end
   s.editing_line=mid(1,s.editing_line,#s.code)
   refresh_bounds()
   recalc_length()
   s.errorcheck(s.editing_line)
+  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row<s.code_scrollrow+6 do s.code_scrollrow=s.code_scrollrow-.5 end
+  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row>s.code_scrollrow+15.5 do s.code_scrollrow=s.code_scrollrow+.5 end
+  s.code_scrollrow=math.max(s.code_scrollrow,0)
 end
 
 function s.keyreleased(key)

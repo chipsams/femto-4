@@ -342,28 +342,68 @@ local ops_definition={
     return true,bytes
   end,". r r r r|n"},
   {"spr",function(b1,b2)
-    local _,r1,r2,r3,const_spr=bitsplit(b1,b2,{5,3,3,3,1,1})
+    local _,r1,r2,r3,const_spr,extended_mode=bitsplit(b1,b2,{5,3,3,3,1,1})
     r1,r2,r3=get_regs(r1,r2,r3)
+    local sp
     if const_spr==1 then
-      local b3=mem[s.pc+2]
+      sp=mem[s.pc+2]
       s.pc=s.pc+1
-      --print(b3)
-      sspr(b3  ,r2(),r3(),1,1,1)
     else
-      sspr(r1(),r2(),r3(),1,1,1)
+      sp=r1()
     end
+    local w,h=1,1
+    local flipx,flipy=false,false
+    if extended_mode==1 then
+      local l_w,l_fx
+      local l_h,l_fy
+      _,l_w,w,l_fx,flipx=bitsplit(0,mem[s.pc+2],{8,1,3,1,3})
+      s.pc=s.pc+1
+      local w_r=get_regs(w)
+      if l_w==0 and w_r then w=w_r() end
+      local flipx_r=get_regs(flipx)
+      if l_fx==0 and flipx_r then flipx=flipx_r() end
+      _,l_h,h,l_fy,flipy=bitsplit(0,mem[s.pc+2],{8,1,3,1,3})
+      s.pc=s.pc+1
+      --print(l_h,h,l_fy,flipy)
+      local h_r=get_regs(h)
+      if l_h==0 and h_r then h=h_r() end
+      local flipy_r=get_regs(flipy)
+      if l_fy==0 and flipy_r then flipy=flipy_r() end
+      flipx=flipx>0
+      flipy=flipy>0
+    end
+    s.cpubudget=s.cpubudget-w*h*8-9
+    sspr(sp,r2(),r3(),w,h,1,flipx,flipy)
   end,function(id,line)
     local tokens=tokenize(line)
-    local _,or1,r2,r3=unpack(tokens)
+    local _,or1,r2,r3,w,h,flipx,flipy=unpack(tokens)
     local r1,r2,r3=get_reg_names(or1,r2,r3)
     --print(r1,r2,r3)
     if not (r2 and r3) then return false end
     if not r1 and not better_tonumber(or1) then return false end
-    if better_tonumber(or1) then
+    if w and h then
+      flipx=flipx or "false"
+      flipy=flipy or "false"
+      --extra param format:
+      --1 treat w as literal
+      --  111 r1 (w in sprite tiles)
+      --1 treat flip as literal
+      --  111 r2 (flip x)
+      local flipx_r,flipy_r=get_reg_names(flipx,flipy)
+      local w_r,h_r=get_reg_names(w,h)
+      local bytes=bitpack({5,3,3,3,1,1, 1,3,1,3, 1,3,1,3},id, 0,r2,r3, better_tonumber(r1) and 1 or 0,1,
+      w_r and 0 or 1,w_r or better_tonumber(w),flipx_r and 0 or 1,flipx_r or (flipx=="true" and 1 or 0),
+      h_r and 0 or 1,h_r or better_tonumber(h),flipy_r and 0 or 1,flipy_r or (flipy=="true" and 1 or 0)
+      )
+      
+      if better_tonumber(r1) then table.insert(s.code,3,bit.band(better_tonumber(r1),255)) end
+
+      return true,bytes
+    elseif better_tonumber(or1) then
       return true,bitpack({5,3,3,3,1,1,8},id, 0,r2,r3, 1,0,better_tonumber(or1))
     end
     return true,bitpack({5,3,3,3,1,1},id,r1,r2,r3,0,0)
-  end,". r|n r r"},
+  end,". r|n r r r|n? r|n? 'true|'false|r? 'true|'false|r?"},
   {"cls",function(b1,b2)
     s.cpubudget=s.cpubudget-100
     local _,r1,override_col,override=bitsplit(b1,b2,{5,3,2,1,5})

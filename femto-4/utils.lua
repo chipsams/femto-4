@@ -4,7 +4,7 @@ function flr(v,...)
 end
 
 function boundscreen_x(x)
-  return math.min(math.max(x,0),63)
+  return math.min(math.max(x,0),mem[mem_map.hirez]==1 and 127 or 63)
 end
 function boundscreen_y(y)
   return math.min(math.max(y,0),47)

@@ -11,6 +11,7 @@ end
 print(bit)
 
 mem_map={
+  hirez=0x343,
 
   print_cursor_x=0x344,
   print_cursor_y=0x345,
@@ -62,7 +63,7 @@ mouse={
 }
 local function updatemouse()
   local mx,my=love.mouse.getPosition()
-  mx=math.floor((mx-screen.x)/screen.scale)
+  mx=math.floor((mx-screen.x)/screen.scale*(mem[mem_map.hirez]==1 and 2 or 1))
   my=math.floor((my-screen.y)/screen.scale)
   mouse.lb=love.mouse.isDown(1)
   mouse.rb=love.mouse.isDown(2)
@@ -165,8 +166,13 @@ function love.load()
 
   font=love.image.newImageData("assets/font.png")
   
-  renderdata=love.image.newImageData(64,64)
+  renderdata=love.image.newImageData(64,48)
   renderscreen=love.graphics.newImage(renderdata)
+  
+  renderdata_double_width=love.image.newImageData(128,48)
+  renderscreen_double_width=love.graphics.newImage(renderdata_double_width)
+
+  
   
   cart_manip=require"cart_manip"
   
@@ -179,8 +185,9 @@ function love.load()
 
   --change this to change the starting state
   --at the moment should be codestate!
-  currentscene=confstate
+  currentscene=codestate
 
+  --mem[mem_map.hirez]=1
   for l=0,3 do
     mem[mem_map.screen_pal+l]=confstate.settings.editor_pal[l+1]  --init screen pallete
     mem[mem_map.draw_pal+l]=l  --init draw pallete
@@ -191,10 +198,10 @@ end
 t=0
 
 function love.resize(w,h)
-  --screen.scale=math.min(w*0.75,h)/48
-  screen.scale=math.min(w,h)/64
+  screen.scale=math.min(w*0.75,h)/48
+  --screen.scale=math.min(w,h)/64
   screen.x=w/2-screen.scale*32
-  screen.y=h/2-screen.scale*32
+  screen.y=h/2-screen.scale*24
 end
 
 escape_timer=0
@@ -225,14 +232,31 @@ function love.draw()
     local palindex=mem[mem_map.screen_pal+l]
     r[l],g[l],b[l]=pal:getPixel(palindex%16,math.floor(palindex/16))
   end
-  renderdata:mapPixel(function(x,y)
-    local v=bit.band(bit.rshift(mem[math.floor(bit.rshift(x,2)+bit.lshift(y,4))+mem_map.screen],bit.lshift(bit.band(x,3),1)),3)
-    --return v,v,v
-    return r[v],g[v],b[v]
-  end)
+  local render_mode=mem[mem_map.hirez]
+  local renderdata=renderdata
+  local renderscreen=renderscreen
+  local xmult,ymult=1,1
+  if render_mode==1 then
+    xmult=0.5
+    renderdata=renderdata_double_width
+    renderscreen=renderscreen_double_width
+    renderdata:mapPixel(function(x,y)
+      -- mem[x+y*16+screen]>>x&7
+      local v=bit.band(bit.rshift(mem[bit.rshift(x,3)+bit.lshift(y,4)+mem_map.screen],bit.band(x,7)),1)
+      --return v,v,v
+      return r[v],g[v],b[v]
+    end)
+    renderscreen:replacePixels(renderdata)
+  else
+    renderdata:mapPixel(function(x,y)
+      local v=bit.band(bit.rshift(mem[math.floor(bit.rshift(x,2)+bit.lshift(y,4))+mem_map.screen],bit.lshift(bit.band(x,3),1)),3)
+      --return v,v,v
+      return r[v],g[v],b[v]
+    end)
+  end
   renderscreen:replacePixels(renderdata)
   love.graphics.clear(0,0,0)
-  love.graphics.draw(renderscreen,screen.x,screen.y,0,screen.scale,screen.scale)
+  love.graphics.draw(renderscreen,screen.x,screen.y,0,screen.scale*xmult,screen.scale*ymult)
 
   if escape_timer>0 then
     love.graphics.print("quitting"..string.rep(".",math.floor(escape_timer*4)),screen.x,screen.y,0,2,2)
@@ -242,6 +266,7 @@ function love.draw()
 end
 
 function love.keypressed(key)
+  if key=="9" then mem[mem_map.hirez]=(mem[mem_map.hirez]+1)%2 return end
   if currentscene.keypressed then currentscene.keypressed(key) end
 end
 

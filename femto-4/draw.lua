@@ -38,7 +38,6 @@ local scale=8
 local colourpickscale=5
 
 function s.update()
-  mem_map.screen=0x400
   if not (mouse.lb or mouse.mb or mouse.rb) then s.clickmode=nil end
 
   local x,tab=convertpos(mouse.x,mouse.y,59,17,6,6)
@@ -61,7 +60,7 @@ function s.update()
   local sx,sy=s.sprite%16*4,math.floor(s.sprite/16)*4
   local onspr=cx>=0 and cx<=s.spritescale*4-1 and cy>=0 and cy<=s.spritescale*4-1
   if mouse.lb and canclick(onspr and not ctrlheld,"draw") then
-    pset(sx+cx,sy+cy,s.colour)
+    sset(sx+cx,sy+cy,s.colour)
   end
   if mouse.lb and canclick(onspr and ctrlheld,"fill") then
     local c=pget(sx+cx,sy+cy)
@@ -82,17 +81,10 @@ function s.update()
   local pagex,pagey=convertpos(mouse.x,mouse.y,38,18,4)
   local onpage=pagex>=0 and pagex<=3 and pagey>=0 and pagey<=3
   if mouse.lb and canclick(onpage,"page") then s.sprite=s.spritepagex+s.spritepagey*16+pagex+pagey*16 end
-
-  mem_map.screen=0x800
 end
 
 function s.draw()
   cls(0)
-  
-  --top and bottom red bars
-  rectfill(0,0,63,4,1)
-  rectfill(0,42,63,47,1)
-
   --sprite drawing border
   rect(2,7,35,40,3)
   rectfill(1,6,34,39,0)
@@ -177,6 +169,11 @@ function s.draw()
     local dx,dy=s.visual_tabs[tabi.page].x+6+s.spritepagex*1.25,18+s.spritepagey*1.25
     plot_imgdata_1col(page_select_cursor_png,dx,dy,1)
   end
+  
+  
+  --top and bottom red bars
+  rectfill(0,0,127,4,1)
+  rectfill(0,42,127,47,1)
   
   --title bar
   buttons.draw()
