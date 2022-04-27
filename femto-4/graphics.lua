@@ -252,7 +252,7 @@ end
 ---@param w number (1)
 ---@param h number (1)
 ---@param scale number (1)
-function sspr(sp,x,y,w,h,scale)
+function sspr(sp,x,y,w,h,scale,flipx,flipy)
   local w=w or 1
   local h=h or 1
   local scale=scale or 1
@@ -260,7 +260,7 @@ function sspr(sp,x,y,w,h,scale)
   local sy=math.floor(sp/16)*4
   for lx=0,w*4-1 do
     for ly=0,h*4-1 do
-      local dx,dy=x+lx*scale,y+ly*scale
+      local dx,dy=x+(flipx and w*4-1-lx or lx)*scale,y+(flipy and h*4-1-ly or ly)*scale
       local c=sget(sx+lx,sy+ly)
       if mem[mem_map.transparency_pal+c]>0 then rectfill(dx,dy,dx+scale-1,dy+scale-1,c) end
     end

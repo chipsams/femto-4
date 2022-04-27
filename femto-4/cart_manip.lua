@@ -54,7 +54,6 @@ function s.fromstring(st)
         writepos=writepos+(#row-1)*16
       else
         for l=1,#row-1,4 do
-          print(row:sub(l,l+3))
           mem[writepos]=tonumber(row:sub(l,l+3):reverse(),4)
           writepos=writepos+1
         end
