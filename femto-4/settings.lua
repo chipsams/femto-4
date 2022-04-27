@@ -3,8 +3,7 @@ local s={}
 local toml=require("toml_lua/toml")
 s.settings_default={
   editor_pal={0,1,2,3},
-  toggle_a=false,
-  toggle_b=true
+  hires=false
 }
 
 if love.filesystem.getInfo("config.toml") then
@@ -49,7 +48,7 @@ s.settings_layout={
       {type="number",name="col 3",min=0,max=255,target={s.settings.editor_pal,4}},
     },
   },
-  {type="toggle",name="bool b",target={s.settings,"toggle_b"}}
+  {type="toggle",name="hi res",target={s.settings,"hires"}}
 }
 
 s.display={}
@@ -65,8 +64,8 @@ function calctab(contents,dx,dy)
       table.insert(s.display,{type="text",txt=v.open and "v" or ">",x=dx+#v.name*4+1,y=dy,c=3,click=togglev})
       local pdy=dy
       if v.open then
-        dy=calctab(v.contents,dx+3,dy+4)
-        table.insert(s.display,{type="line",x1=dx+1,y1=pdy+4,x2=dx+1,y2=dy-2,c=3})
+        dy=calctab(v.contents,dx+4,dy+4)
+        table.insert(s.display,{type="line",x1=dx+2,y1=pdy+4,x2=dx+2,y2=dy-2,c=3})
       else
         dy=dy+4
       end
@@ -100,9 +99,9 @@ function s.draw()
       line(v.x1,v.y1,v.x2,v.y2,v.c)
     end
   end
-  rectfill(0,0,63,4,1)
-  rectfill(0,42,63,47,1)
-  rectfill(0,42,63,47,1)
+  rectfill(0,0,127,4,1)
+  rectfill(0,42,127,47,1)
+  rectfill(0,42,127,47,1)
   buttons.draw()
   sc_write("settings",1,1,0)
   plot_imgdata(cursor,mouse.x,mouse.y)

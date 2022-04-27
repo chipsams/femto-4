@@ -186,8 +186,8 @@ function love.load()
   --change this to change the starting state
   --at the moment should be codestate!
   currentscene=codestate
-
-  --mem[mem_map.hirez]=1
+ 
+  mem[mem_map.hirez]=confstate.settings.hires and 1 or 0
   for l=0,3 do
     mem[mem_map.screen_pal+l]=confstate.settings.editor_pal[l+1]  --init screen pallete
     mem[mem_map.draw_pal+l]=l  --init draw pallete
@@ -266,7 +266,6 @@ function love.draw()
 end
 
 function love.keypressed(key)
-  if key=="9" then mem[mem_map.hirez]=(mem[mem_map.hirez]+1)%2 return end
   if currentscene.keypressed then currentscene.keypressed(key) end
 end
 

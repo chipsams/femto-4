@@ -397,7 +397,7 @@ function s.keypressed(key)
   recalc_length()
   s.errorcheck(s.editing_line)
   while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row<s.code_scrollrow+6 do s.code_scrollrow=s.code_scrollrow-.5 end
-  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row>s.code_scrollrow+15.5 do s.code_scrollrow=s.code_scrollrow+.5 end
+  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row>s.code_scrollrow+(mem[mem_map.hirez]==1 and 29.5 or 15.5) do s.code_scrollrow=s.code_scrollrow+.5 end
   s.code_scrollrow=math.max(s.code_scrollrow,0)
 end
 
