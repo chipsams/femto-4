@@ -1,11 +1,13 @@
 local s={}
 
 function s.quit()
+  mem[mem_map.hirez]=confstate.settings.hires and 1 or 0
   for l=0,3 do
     mem[mem_map.screen_pal+l]=confstate.settings.editor_pal[l+1]  --init screen pallete
     mem[mem_map.draw_pal+l]=l  --init draw pallete
     mem[mem_map.transparency_pal+l]=1  --init transparency pallete
   end
+  
   currentscene=s.returnscene or codestate
 end
 
