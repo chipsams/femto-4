@@ -204,8 +204,21 @@ function love.resize(w,h)
   screen.y=h/2-screen.scale*24
 end
 
+local repeatfn
+local repeatkey
+local repeattimer=0
+local keysource
+
 escape_timer=0
 function love.update(dt)
+  if repeatkey then
+    --print(repeattimer,confstate.settings.keyboard.delay,confstate.settings.keyboard["repeat"])
+    repeattimer=repeattimer+dt
+    if repeattimer>confstate.settings.keyboard.delay then
+      repeattimer=repeattimer-confstate.settings.keyboard["repeat"]
+      if repeatfn then repeatfn(repeatkey,true) end
+    end
+  end
   if love.keyboard.isDown("escape") then
     escape_timer=escape_timer+dt
     if escape_timer>=.75 then love.event.quit() end
@@ -265,17 +278,30 @@ function love.draw()
   love.graphics.print(love.timer.getFPS(),1,1)
 end
 
+
 function love.keypressed(key)
+  repeatkey=key
+  repeattimer=0
+  repeatfn=currentscene.keypressed
+  keysource="keypressed"
   if currentscene.keypressed then currentscene.keypressed(key) end
 end
 
 function love.keyreleased(key)
+  repeatkey=nil
   if currentscene.keyreleased then currentscene.keyreleased(key) end
 end
 
-
 function love.textinput(key)
-  if currentscene.textinput then currentscene.textinput(key) end
+  if repeatkey==key and keysource=="textinput" then return end
+  repeatkey=key
+  repeattimer=0
+  keysource="textinput"
+  repeatfn=currentscene.textinput
+  if currentscene.textinput then
+    print("call")
+    currentscene.textinput(key)
+  end
 end
 
 function love.wheelmoved(x,y)

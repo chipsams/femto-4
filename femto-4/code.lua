@@ -103,7 +103,13 @@ code_length=0
 local function recalc_length()
   s.code_length=#s.code-1
   for l=1,#s.code do s.code_length=s.code_length+#s.code[l] end
+end
 
+local function recalc_screen()
+  while s.editing_line<s.code_scrollpos+2 and s.code_scrollpos>0 do s.code_scrollpos=s.code_scrollpos-.5 end
+  while s.editing_line>s.code_scrollpos+7.5 do s.code_scrollpos=s.code_scrollpos+.5 end
+  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row<s.code_scrollrow+5 do s.code_scrollrow=s.code_scrollrow-.5 end
+  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row>s.code_scrollrow+(mem[mem_map.hirez]==1 and 29.5 or 14.5) do s.code_scrollrow=s.code_scrollrow+.5 end
 end
 
 local ctrlheld=false
@@ -203,6 +209,7 @@ function s.mousedown()
   if shiftheld then
     mouseselect=true
   end
+  recalc_screen()
   buttons.mousedown()
 end
 
@@ -284,13 +291,14 @@ function s.textinput(key)
       s.code[s.editing_line]=insert_char(cur_line,s.editing_row,key) s.editing_row=s.editing_row+1
       
     end
+    recalc_screen()
   end
   
   s.errorcheck(s.editing_line)
 end
 
 
-function s.keypressed(key)
+function s.keypressed(key,isrepeat)
   s.changed=true
   local lastline=s.editing_line
   local cur_line=s.code[s.editing_line]
@@ -304,6 +312,7 @@ function s.keypressed(key)
       if s.code[s.editing_line] then s.editing_row=#s.code[s.editing_line] end
     end
     resetselect()
+    recalc_screen()
   elseif key=="right" then
     s.editing_row = s.editing_row+1
     if s.editing_row>#s.code[s.editing_line] and s.editing_line<#s.code then
@@ -311,6 +320,7 @@ function s.keypressed(key)
       if s.code[s.editing_line] then s.editing_row=0 end
     end
     resetselect()
+    recalc_screen()
   elseif key=="backspace" then
     if selecting then
       remove_selected("")
@@ -324,6 +334,7 @@ function s.keypressed(key)
         s.code[s.editing_line]=del_char(cur_line,s.editing_row) s.editing_row=s.editing_row-1
       end
     end
+    recalc_screen()
   elseif key=="return" then
     if selecting then
       s.keypressed("backspace")
@@ -343,18 +354,18 @@ function s.keypressed(key)
     shiftheld=true
   elseif key=="lctrl" then ctrlheld=true
   elseif key=="space" then s.keypressed(" ")
-  elseif key=="s" and ctrlheld then
+  elseif key=="s" and ctrlheld and not isrepeat then
     local txt=cart_manip.tostring()
     love.system.setClipboardText(txt)
-  elseif key=="o" and ctrlheld then
+  elseif key=="o" and ctrlheld and not isrepeat then
     local txt=love.system.getClipboardText()
     cart_manip.fromstring(txt)
-  elseif key=="c" and ctrlheld then
+  elseif key=="c" and ctrlheld and not isrepeat then
     if selecting and ctrlheld then
       local txt=get_selected()
       love.system.setClipboardText(txt)
     end
-  elseif key=="v" and ctrlheld then
+  elseif key=="v" and ctrlheld and not isrepeat then
     if selecting then remove_selected("") end
     local add_txt=love.system.getClipboardText()
     local _,newlines=add_txt:gsub("\n","")
@@ -369,35 +380,36 @@ function s.keypressed(key)
         s.errorcheck(s.editing_line)
       end
     end
-  elseif key=="a" and ctrlheld then
+  elseif key=="a" and ctrlheld and not isrepeat then
     s.select_line=1
     s.select_row=0
     s.editing_line=#s.code
     s.editing_row=#(s.code[#s.code])
     selecting=true
-  elseif key=="x" and ctrlheld then
+  elseif key=="x" and ctrlheld and not isrepeat then
     local txt=get_selected()
     love.system.setClipboardText(txt)
     remove_selected("")
-  elseif key=="e" and ctrlheld then
+  elseif key=="e" and ctrlheld and not isrepeat then
     s.errorcheck(s.editing_line)
-  elseif key=="r" and ctrlheld then
+  elseif key=="r" and ctrlheld and not isrepeat then
     ctrlheld=false
     loadcode()
-  end
-  if s.editing_line~=lastline and s.code[s.editing_line] and s.code[lastline] then
-    local lastcolon=s.code[lastline]:find(":",nil,true) or 0
-    local colon=s.code[s.editing_line]:find(":",nil,true) or 0
-    s.editing_row=s.editing_row-lastcolon+colon
-    while s.editing_line<s.code_scrollpos+2 and s.code_scrollpos>0 do s.code_scrollpos=s.code_scrollpos-.5 end
-    while s.editing_line>s.code_scrollpos+7.5 do s.code_scrollpos=s.code_scrollpos+.5 end
   end
   s.editing_line=mid(1,s.editing_line,#s.code)
   refresh_bounds()
   recalc_length()
+  if s.editing_line~=lastline then
+    if s.code[s.editing_line] and s.code[lastline] then
+      local lastcolon=s.code[lastline]:find(":",nil,true) or 0
+      local colon=s.code[s.editing_line]:find(":",nil,true) or 0
+      s.editing_row=s.editing_row-lastcolon+colon
+    end
+    recalc_screen()
+  end
+  refresh_bounds()
+  recalc_length()
   s.errorcheck(s.editing_line)
-  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row<s.code_scrollrow+6 do s.code_scrollrow=s.code_scrollrow-.5 end
-  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row>s.code_scrollrow+(mem[mem_map.hirez]==1 and 29.5 or 15.5) do s.code_scrollrow=s.code_scrollrow+.5 end
   s.code_scrollrow=math.max(s.code_scrollrow,0)
 end
 
