@@ -10,6 +10,59 @@ s.spritepagey=0
 s.colour=1
 s.spritescale=1
 
+s.tool=nil
+s.lasttoggled=nil
+
+local tools={
+  {
+    img="rect.png",
+    ctrlimg="rectfill.png",
+    use=function(sx,sy,x,y)
+      local fn=ctrlheld and rectfill or rect
+      fn(sx,sy,x,y,s.colour)
+    end
+  },
+  {
+    img="circ.png",
+    ctrlimg="circfill.png",
+    use=function(sx,sy,x,y)
+      local dx,dy=x-sx,y-sy
+      local fn=ctrlheld and circfill or circ
+      fn(sx,sy,math.sqrt(dx*dx+dy*dy),s.colour)
+    end
+  },
+  {
+    img="line.png",
+    use=function(sx,sy,x,y)
+      line(sx,sy,x,y,s.colour)
+    end
+  },
+  {
+    img="fill.png",
+    use=function(sx,sy,x,y)
+      local sx,sy=s.sprite%16*4,math.floor(s.sprite/16)*4
+      if not mouse.p_lb then
+        local startcol=pget(x,y)
+        if startcol==s.colour then return end
+        local function replace(x,y)
+          if x<sx or x>=sx+s.spritescale*4 or y<sy or y>=sy+s.spritescale*4 then return end
+          pset(x,y,s.colour)
+          for ox=-1,1 do
+            for oy=-1,1 do
+              if pget(x+ox,y+oy)==startcol then replace(x+ox,y+oy) end
+            end
+          end
+        end
+        replace(x,y)
+      end
+    end
+  },
+}
+for _,tool in pairs(tools) do
+  tool.ctrlimg=love.image.newImageData("assets/menu_buttons/"..(tool.ctrlimg or tool.img))
+  tool.img=love.image.newImageData("assets/menu_buttons/"..tool.img)
+end
+
 local openx=59-32 
 local closedx=59
 
@@ -27,6 +80,9 @@ for l=1,#tabs do s.visual_tabs[l]={x=0,h=0} tabi[tabs[l]]=l end
 
 s.tab=""
 
+s.clickstartx=nil
+s.clickstarty=nil
+
 s.clickmode=nil
 local function canclick(bool,mode)
   local can=(not s.clickmode and bool) or s.clickmode==mode
@@ -38,7 +94,9 @@ local scale=8
 local colourpickscale=5
 
 function s.update()
-  if not (mouse.lb or mouse.mb or mouse.rb) then s.clickmode=nil end
+  local mem_screen=mem_map.screen
+  mem_map.screen=mem_map.sprites
+  if not (mouse.lb or mouse.mb or mouse.rb) then s.clickmode=nil s.clickstartx,s.clickstarty=nil,nil end
 
   local x,tab=convertpos(mouse.x,mouse.y,59,17,6,6)
   if mouse.lb and canclick(x==0,"opentab") and tabs[tab+1] then s.tab=tabs[tab+1] end
@@ -59,15 +117,21 @@ function s.update()
   local cx,cy=convertpos(mouse.x,mouse.y,2,7,scale/s.spritescale)
   local sx,sy=s.sprite%16*4,math.floor(s.sprite/16)*4
   local onspr=cx>=0 and cx<=s.spritescale*4-1 and cy>=0 and cy<=s.spritescale*4-1
-  if mouse.lb and canclick(onspr and not ctrlheld,"draw") then
-    sset(sx+cx,sy+cy,s.colour)
+  if mouse.lb and canclick(onspr and (not ctrlheld or s.tool),"draw") then
+    if s.tool then
+      s.clickstartx=s.clickstartx or sx+cx
+      s.clickstarty=s.clickstarty or sy+cy
+      tools[s.tool].use(s.clickstartx,s.clickstarty,sx+cx,sy+cy)
+    else
+      sset(sx+cx,sy+cy,s.colour)
+    end
   end
-  if mouse.lb and canclick(onspr and ctrlheld,"fill") then
-    local c=pget(sx+cx,sy+cy)
+  if not s.tool and mouse.lb and canclick(onspr and ctrlheld,"replace") then
+    local c=sget(sx+cx,sy+cy)
     for lx=0,4*s.spritescale-1 do
       for ly=0,4*s.spritescale-1 do
-        if pget(sx+lx,sy+ly)==c then
-          pset(sx+lx,sy+ly,s.colour)
+        if sget(sx+lx,sy+ly)==c then
+          sset(sx+lx,sy+ly,s.colour)
         end
       end
     end
@@ -75,12 +139,31 @@ function s.update()
   if mouse.rb and canclick(onspr,"draw") then
     s.colour=sget(sx+cx,sy+cy)
   end
+
+  if mouse.lb and canclick(onspr and not ctrlheld,"draw") then
+  end
+
+  local toolx,tooly=convertpos(mouse.x,mouse.y,37,36,5,5)
+  local ontools=toolx>=0 and toolx<#tools and tooly==0
+  if not mouse.lb then s.lasttoggled=nil end
+  if mouse.lb and canclick(ontools,"toolpick") then
+    if s.lasttoggled~=toolx then
+      if s.tool==toolx+1 then
+        s.tool=nil
+      else
+        s.tool=toolx+1
+      end
+      s.lasttoggled=toolx
+    end
+  end
+
   local palx,paly=convertpos(mouse.x,mouse.y,62-(colourpickscale+1)*4,8,colourpickscale+1)
   if mouse.lb and canclick(paly==0 and palx>=0 and palx<=3,"pal") then s.colour=mid(0,palx,3) end
 
   local pagex,pagey=convertpos(mouse.x,mouse.y,38,18,4)
   local onpage=pagex>=0 and pagex<=3 and pagey>=0 and pagey<=3
   if mouse.lb and canclick(onpage,"page") then s.sprite=s.spritepagex+s.spritepagey*16+pagex+pagey*16 end
+  mem_map.screen=mem_screen
 end
 
 function s.draw()
@@ -91,7 +174,7 @@ function s.draw()
   rect(1,6,34,39,2)
 
   --draw the actual sprite
-  sspr(s.sprite,2,7,s.spritescale,s.spritescale,scale/s.spritescale)
+  sspr(s.sprite,2,7,s.spritescale,s.spritescale,scale/s.spritescale,false,false)
 
   --draw the color picker
   do
@@ -170,6 +253,10 @@ function s.draw()
     plot_imgdata_1col(page_select_cursor_png,dx,dy,1)
   end
   
+  for l,tool in pairs(tools) do
+    plot_imgdata_1col(ctrlheld and tool.ctrlimg or tool.img,38+l*5-5,37,l==s.tool and 2 or 3)
+    if l~=s.tool then plot_imgdata_1col(ctrlheld and tool.ctrlimg or tool.img,37+l*5-5,36,2) end
+  end
   
   --top and bottom red bars
   rectfill(0,0,127,4,1)

@@ -134,12 +134,20 @@ reg_names={
   "a","b","c",
   "x","y",
   "t",
-  "rnd",
-  "stk"
+  {"stka","stk"},
+  "stkb"
 }
 
 
-for k,v in ipairs(reg_names) do reg_names[v]=k-1 end
+for k,v in ipairs(reg_names) do
+  if type(v)=="string" then
+    reg_names[v]=k-1
+  elseif type(v)=="table" then
+    for _,v in pairs(v) do
+      reg_names[v]=k-1
+    end
+  end
+end
 for k,v in pairs(reg_names) do
   if type(k)=="number" then
     --reg_names[k]=nil
@@ -167,12 +175,16 @@ local stats={
   {"mouse_mb",function() return mouse.mb and 1 or 0 end},
   {"mouse_rb",function() return mouse.rb and 1 or 0 end},
   {"cpu",function() return s.cpubudget end},
-  {"stk_size",function() return mem[mem_map.stack_pointer] end},
-  {"stk_peek",function() if mem[mem_map.stack_pointer]>0 then return mem[mem_map.stack_start+mem[mem_map.stack_pointer]-1] else return 0 end end},
+  {"stk_a_size",function() return mem[mem_map.stack_pointer_a] end},
+  {"stk_a_peek",function() if mem[mem_map.stack_pointer_a]>0 then return mem[mem_map.stack_start_a+mem[mem_map.stack_pointer_a]-1] else return 0 end end},
+  {"stk_b_size",function() return mem[mem_map.stack_pointer_b] end},
+  {"stk_b_peek",function() if mem[mem_map.stack_pointer_b]>0 then return mem[mem_map.stack_start_b+mem[mem_map.stack_pointer_b]-1] else return 0 end end},
   {"last_x",function() return memsigned[mem_map.last_draw_x] end},
   {"last_y",function() return memsigned[mem_map.last_draw_y] end},
   {"print_x",function() return memsigned[mem_map.print_cursor_x] end},
   {"print_y",function() return memsigned[mem_map.print_cursor_y] end},
+  {"rnd_byte",function() return math.random(0,255) end},
+  {"rnd",function() return math.random() end},
 }
 local stat_names={}
 local stat_funcs={}
@@ -394,8 +406,8 @@ local ops_definition={
       local flipx_r,flipy_r=get_reg_names(flipx,flipy)
       local w_r,h_r=get_reg_names(w,h)
       local bytes=bitpack({5,3,3,3,1,1, 1,3,1,3, 1,3,1,3},id, 0,r2,r3, better_tonumber(r1) and 1 or 0,1,
-      w_r and 0 or 1,w_r or better_tonumber(w),flipx_r and 0 or 1,flipx_r or (flipx=="true" and 1 or 0),
-      h_r and 0 or 1,h_r or better_tonumber(h),flipy_r and 0 or 1,flipy_r or (flipy=="true" and 1 or 0)
+      w_r and 0 or 1,w_r or (better_tonumber(w) or 1)-1,flipx_r and 0 or 1,flipx_r or (flipx=="true" and 1 or 0),
+      h_r and 0 or 1,h_r or (better_tonumber(h) or 1)-1,flipy_r and 0 or 1,flipy_r or (flipy=="true" and 1 or 0)
       )
       
       if better_tonumber(r1) then table.insert(s.code,3,bit.band(better_tonumber(r1),255)) end
@@ -478,7 +490,9 @@ local ops_definition={
   {"deb",function(b1,b2)
       local _,reg_i=bitsplit(b1,b2,{5,3,8})
       local reg=get_regs(reg_i)
-      print("debug:",reg_names[reg_i+1],reg())
+      local name=reg_names[reg_i+1]
+      if type(name)=="table" then name=name[1] end
+      print("debug:",name,reg())
   end,function(id,line)
     local tokens=tokenize(line)
     local _,reg=unpack(tokens)
@@ -592,15 +606,6 @@ end
 local function reg(initv,fn)
   local v=initv
   local fn=fn
-  if fn then
-    local loaded_fn,err=load(fn,nil,nil,{s=s,math=math,mem=mem,mem_map=mem_map})
-    if not loaded_fn then
-      print("error loading register:",err)
-    else
-      fn=loaded_fn()
-    end
-    
-  end
   fn=fn or function(w)
     local pv=v
     if w then v=w end
@@ -611,7 +616,8 @@ end
 
 function s.init()
   s.cpubudget=0
-  mem[mem_map.stack_pointer]=0
+  mem[mem_map.stack_pointer_a]=0
+  mem[mem_map.stack_pointer_b]=0
 
   for l=0,3 do
     mem[mem_map.screen_pal+l]=l  --init screen pallete
@@ -624,23 +630,32 @@ function s.init()
     reg(0),reg(0),reg(0), -- a-c (gp)
     reg(0),reg(0), -- x-y (gp)
     reg(0), --t (for conditions)
-    reg(0,[=[return function(w)
-      s.cpubudget=s.cpubudget-1
-      return math.random(0,255)      
-    end]=]), --rnd
-    reg(0,[=[return function(w)
+    reg(0,function(w)
       if w then
-        mem[mem_map.stack_start+mem[mem_map.stack_pointer]]=w 
-        mem[mem_map.stack_pointer]=mem[mem_map.stack_pointer]+1
+        mem[mem_map.stack_start_a+mem[mem_map.stack_pointer_a]]=w 
+        mem[mem_map.stack_pointer_a]=mem[mem_map.stack_pointer_a]+1
       else
-        if mem[mem_map.stack_pointer]>0 then
-          mem[mem_map.stack_pointer]=mem[mem_map.stack_pointer]-1
-          return mem[mem_map.stack_start+mem[mem_map.stack_pointer]]
+        if mem[mem_map.stack_pointer_a]>0 then
+          mem[mem_map.stack_pointer_a]=mem[mem_map.stack_pointer_a]-1
+          return mem[mem_map.stack_start_a+mem[mem_map.stack_pointer_a]]
         else
           return 0
         end
       end
-    end]=])--stack
+    end),--stack a
+    reg(0,function(w)
+      if w then
+        mem[mem_map.stack_start_b+mem[mem_map.stack_pointer_b]]=w 
+        mem[mem_map.stack_pointer_b]=mem[mem_map.stack_pointer_b]+1
+      else
+        if mem[mem_map.stack_pointer_b]>0 then
+          mem[mem_map.stack_pointer_b]=mem[mem_map.stack_pointer_b]-1
+          return mem[mem_map.stack_start_b+mem[mem_map.stack_pointer_b]]
+        else
+          return 0
+        end
+      end
+    end)--stack b
   }
   s.running=true
   s.pc=mem_map.code

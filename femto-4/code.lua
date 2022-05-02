@@ -108,7 +108,7 @@ end
 local function recalc_screen()
   while s.editing_line<s.code_scrollpos+2 and s.code_scrollpos>0 do s.code_scrollpos=s.code_scrollpos-.5 end
   while s.editing_line>s.code_scrollpos+7.5 do s.code_scrollpos=s.code_scrollpos+.5 end
-  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row<s.code_scrollrow+5 do s.code_scrollrow=s.code_scrollrow-.5 end
+  while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row<s.code_scrollrow+2 do s.code_scrollrow=s.code_scrollrow-.5 end
   while math.floor(cursorpos(s.editing_line,1)/4)+s.editing_row>s.code_scrollrow+(mem[mem_map.hirez]==1 and 29.5 or 14.5) do s.code_scrollrow=s.code_scrollrow+.5 end
 end
 
@@ -247,7 +247,7 @@ function s.draw()
         if not(s.editing_line==s.select_line and s.editing_row==s.select_row) then rect(x1,i*4+1-yoffset,x2,i*4+5-yoffset,3) end
       end
       if colon>0 then
-        sc_write(pad(code_line:sub(1,colon),4," "),1-xoffset,i*4+2-yoffset,mem[mem_map.hirez]==1 and 3 or 2)
+        sc_write(code_line:sub(1,colon),1-colon*4+16-xoffset,i*4+2-yoffset,mem[mem_map.hirez]==1 and 3 or 2)
       else
         sc_write(index,1-xoffset,i*4+2-yoffset,3)
         sc_write(":",nil,nil,3)
@@ -410,7 +410,7 @@ function s.keypressed(key,isrepeat)
   refresh_bounds()
   recalc_length()
   s.errorcheck(s.editing_line)
-  s.code_scrollrow=math.max(s.code_scrollrow,0)
+  --s.code_scrollrow=math.max(s.code_scrollrow,0)
 end
 
 function s.keyreleased(key)

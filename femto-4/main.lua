@@ -8,47 +8,38 @@ else
   bit = require 'bit'
   ffi = require 'ffi'
 end
-print(bit)
 
+memsize=2^14
 mem_map={
-  hirez=0x343,
+  code=0x0,   --to fff
+  code_length=0xfff-0x0,
 
-  print_cursor_x=0x344,
-  print_cursor_y=0x345,
+  -- large gap, general purpouse.
 
-  screen_pal=0x346,--to 349
-  draw_pal=0x34a,--to 34d
-  transparency_pal=0x34e,--to 351
+  hirez=0x1a00,
+  print_cursor_x=0x1a01,
+  print_cursor_y=0x1a02,
+  last_draw_x=0x1a03,
+  last_draw_y=0x1a04,
+  --gap
 
-  last_draw_x=0x352,
-  last_draw_y=0x353,
+  screen_pal=0x1a10,--to 1b13
+  draw_pal=0x1a14,--to 1a17 
+  transparency_pal=0x1a18,--to 1a1b
 
-  stack_pointer=0x35f,
-  stack_start=0x360,--to 3ff
+  stack_pointer_a=0x1e00,
+  stack_start_a=0x1e01,--to 1eff
+  stack_pointer_b=0x1f00,
+  stack_start_b=0x1f01,--to 1fff
 
-  sprites=0x400,--to 7ff
+  sprites=0x2000,--to 22ff
+  
+  screen=0x2300,--to 25ff
 
-  screen=0x800, --to aff
-  screen_length=0xaff-0x800,
+  screen_length=0x25ff-0x2300,
 
-  code=0xb00,   --to fff
-  code_length=0xfff-0xb00,
 }
 
--- 000 - 0ff : aloc memory
--- 100 - 33f : general purpouse
--- 340 - 35f : poke flags/memory map stuff (e.g. button state)
--- 344,345: print cursor
--- 346-349: screen pallete
--- 34a-34e: draw pallete
--- 34f: draw colour
--- 350,351: last draw x,y. used for line & rect
--- 352-355: transparency pallete
--- 35f: stack pointer
--- 360 - 3ff : stack
--- 400 - 7ff : sprites [2 bpp, 4x4] = 192 sprites
--- 800 - aff : screen [2bpp] = 64x48 screen
--- b00 - fff : code, each operation is 2 bytes (although some may take more, e.g. string, which reads bytes until it hits 0, writing each bit to the specified position in gp memory.)
 
 fps_cap=31
 window={
@@ -65,6 +56,13 @@ local function updatemouse()
   local mx,my=love.mouse.getPosition()
   mx=math.floor((mx-screen.x)/screen.scale*(mem[mem_map.hirez]==1 and 2 or 1))
   my=math.floor((my-screen.y)/screen.scale)
+  mouse.p_lb=mouse.lb
+  mouse.p_rb=mouse.rb
+  mouse.p_mb=mouse.mb
+  mouse.p_x=mouse.x
+  mouse.p_y=mouse.y
+  mouse.p_onscreen=mouse.onscreen
+
   mouse.lb=love.mouse.isDown(1)
   mouse.rb=love.mouse.isDown(2)
   mouse.mb=love.mouse.isDown(3)
@@ -122,7 +120,7 @@ function love.load()
 
   --these point to the same data, but one sets/gets in the range 0 to 255 and the other sets/gets in the range -128 to 127.
   if ffi then
-    base_mem = love.data.newByteData(2 ^ 12)
+    base_mem = love.data.newByteData(memsize)
     mem=ffi.cast("uint8_t*", base_mem:getFFIPointer())
     memsigned=ffi.cast("int8_t*", base_mem:getFFIPointer())
   else
@@ -172,7 +170,39 @@ function love.load()
   renderdata_double_width=love.image.newImageData(128,48)
   renderscreen_double_width=love.graphics.newImage(renderdata_double_width)
 
-  
+  local pows={}
+  for l=0,7 do pows[l]=2^l end
+  --[[
+    local byte_img_pre=love.image.newImageData(1,256)
+    byte_w=1
+    byte_img_pre:mapPixel(function(x,y)
+      local v=(y+1)/256
+      return v,v,v
+    end)
+  --]]
+  ---[[
+    local byte_img_pre=love.image.newImageData(4,256)
+    byte_w=4
+    byte_img_pre:mapPixel(function(x,y)
+      x=bit.band(x,bit.bnot(0x1))
+      local v=bit.band(bit.rshift(y,pows[x]),0x3)/3
+      return v,v,v
+    end)
+  --]]
+  --[[
+    local byte_img_pre=love.image.newImageData(8,256)
+    byte_w=8
+    byte_img_pre:mapPixel(function(x,y)
+      local v=bit.band(y,pows[x])>0 and 1 or 0
+      return v,v,v
+    end)
+  --]]
+  byte_img=love.graphics.newImage(byte_img_pre)
+  byte_sprite_batch = love.graphics.newSpriteBatch(byte_img)
+  byte_quads={}
+  for l=0,255 do
+    byte_quads[l]=love.graphics.newQuad(0,l,byte_w,1,byte_img:getDimensions())
+  end
   
   cart_manip=require"cart_manip"
   
@@ -227,8 +257,8 @@ function love.update(dt)
   end
   
   t=t+dt
-  updatemouse()
   if currentscene.update then currentscene.update(dt) end
+  updatemouse()
   if currentscene.draw then currentscene.draw(t) end
 end
 
@@ -275,6 +305,18 @@ function love.draw()
     love.graphics.print("quitting"..string.rep(".",math.floor(escape_timer*4)),screen.x,screen.y,0,2,2)
   end
 
+  --[[
+    local dx,dy=screen.x+screen.scale*xmult*64+byte_w*3,0
+    byte_sprite_batch:clear()
+    for y=0,255 do
+      byte_sprite_batch:add(byte_quads[y],dx-byte_w*3,dy+y*2,0,2,2)
+      for x=0,255 do
+        byte_sprite_batch:add(byte_quads[ mem[x+y*256] ],dx+x*byte_w*2,dy+y*2,0,2,2)
+      end
+    end
+    love.graphics.draw(byte_sprite_batch)
+  --]]
+
   love.graphics.print(love.timer.getFPS(),1,1)
 end
 
@@ -312,3 +354,4 @@ function love.mousepressed()
   updatemouse()
   if currentscene.mousedown then currentscene.mousedown() end
 end
+
