@@ -312,7 +312,6 @@ function s.keypressed(key,isrepeat)
       if s.code[s.editing_line] then s.editing_row=#s.code[s.editing_line] end
     end
     resetselect()
-    recalc_screen()
   elseif key=="right" then
     s.editing_row = s.editing_row+1
     if s.editing_row>#s.code[s.editing_line] and s.editing_line<#s.code then
@@ -320,7 +319,6 @@ function s.keypressed(key,isrepeat)
       if s.code[s.editing_line] then s.editing_row=0 end
     end
     resetselect()
-    recalc_screen()
   elseif key=="backspace" then
     if selecting then
       remove_selected("")
@@ -399,14 +397,14 @@ function s.keypressed(key,isrepeat)
   s.editing_line=mid(1,s.editing_line,#s.code)
   refresh_bounds()
   recalc_length()
-  if s.editing_line~=lastline then
+  if s.editing_line~=lastline and key~="left" and key~="right" then
     if s.code[s.editing_line] and s.code[lastline] then
       local lastcolon=s.code[lastline]:find(":",nil,true) or 0
       local colon=s.code[s.editing_line]:find(":",nil,true) or 0
       s.editing_row=s.editing_row-lastcolon+colon
     end
-    recalc_screen()
   end
+  recalc_screen()
   refresh_bounds()
   recalc_length()
   s.errorcheck(s.editing_line)

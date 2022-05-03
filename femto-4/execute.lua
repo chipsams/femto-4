@@ -430,29 +430,48 @@ local ops_definition={
     if better_tonumber(v) then return true,bitpack({5,3,2,1,5},id,0,better_tonumber(v),1,0) end
     return false
   end,". r|n"},
-  {{"jmp","cjp"},function(b1,b2)
+  {{"jmp","cjp","fun","cfn"},function(b1,b2)
     local b3=mem[s.pc+2]
     s.pc=s.pc+1
-    local op,cond,callstack,_=bitsplit(b1,b2,{5,1,1,1,8})
+    local op,cond,call,stack=bitsplit(b1,b2,{5,1,1,1,8})
     local jumpadr=bitsplit(b2,b3,{16})
 
     local t=get_regs(reg_names.t)
+    local stk=get_regs(stack==1 and reg_names.stkb or reg_names.stka)
     if cond==0 or t()>0 then
       --print(basen(jumpadr,16))
+      if call==1 then 
+        local jb1,jb2=unpack(bitpack({16},s.pc))
+        stk(jb1)
+        stk(jb2)
+      end
       s.pc=jumpadr-2
     end
   end,function(id,line,stage)
     --print("jmp",line,stage)
     local tokens=tokenize(line)
-    local op,label=unpack(tokens)
+    local op,stk,label=unpack(tokens)
+    if not(stk=="a" or stk=="b") then
+      label,stk=stk,"b"
+    end
     if stage==1 or stage==2 then
       return true,{0,0,0}
     end
     if not label then return false end
     label=label..":"
     if not s.labels[label] then return false end
-    return true,bitpack({5,1,1,1,8+8},id,op=="cjp" and 1 or 0,0,0,s.labels[label])
-  end,". l"},
+    return true,bitpack({5,1,1,1,8+8},id,(op=="cjp" or op=="cfn") and 1 or 0,(op=="fun" or op=="cfn") and 1 or 0,stk=="b" and 1 or 0,s.labels[label])
+  end,". 'a|'b? l"},
+  {"ret",function(b1,b2)
+    local _,stack=bitsplit(b1,b2,{5,1,10})
+    local stk=get_regs(stack==1 and reg_names.stkb or reg_names.stka)
+    local jb1,jb2=stk(),stk()
+    s.pc=bit.lshift(jb2,8)+jb1
+  end,function(id,line)
+    local tokens=tokenize(line)
+    local op,stk=unpack(tokens)
+    return true,bitpack({5,1,10},id,stk=="a" and 0 or 1,0)
+  end,". 'a|'b?"},
   {"tst",function(b1,b2)
     s.cpubudget=s.cpubudget+0.5 --now this op only costs half a cycle!
     local _,ri1,ri2,l0,e0,g0=bitsplit(b1,b2,{5,3,3,1,1,1,2})
