@@ -373,14 +373,14 @@ local ops_definition={
       _,l_w,w,l_fx,flipx=bitsplit(0,mem[s.pc+2],{8,1,3,1,3})
       s.pc=s.pc+1
       local w_r=get_regs(w)
-      if l_w==0 and w_r then w=w_r() end
+      if l_w==0 and w_r then w=w_r() else w=w+1 end
       local flipx_r=get_regs(flipx)
       if l_fx==0 and flipx_r then flipx=flipx_r() end
       _,l_h,h,l_fy,flipy=bitsplit(0,mem[s.pc+2],{8,1,3,1,3})
       s.pc=s.pc+1
       --print(l_h,h,l_fy,flipy)
       local h_r=get_regs(h)
-      if l_h==0 and h_r then h=h_r() end
+      if l_h==0 and h_r then h=h_r() else h=h+1 end
       local flipy_r=get_regs(flipy)
       if l_fy==0 and flipy_r then flipy=flipy_r() end
       flipx=flipx>0
@@ -536,7 +536,7 @@ local ops_definition={
   end,function(id,line)
     return true,bitpack({5,11},id,0)
   end,"."},
-  {{"pek","pok"},function(b1,b2)
+  {{"pek","pok","pal","spal","tpal"},function(b1,b2)
     local _,peek,t_reg,reg_mode,a_reg,_=bitsplit(b1,b2,{5,1,3,1,3,3})
     t_reg,a_reg=get_regs(t_reg,a_reg)
     local adr
@@ -562,6 +562,17 @@ local ops_definition={
     --print("adr:",adr)
     local adr_reg,reg=get_reg_names(adr,reg_name)
     local num_adr=better_tonumber(adr)
+    local names={
+      pal="draw_pal",
+      spal="screen_pal",
+      tpal="transparency_pal"
+    }
+    if names[op] then
+      if not num_adr then return false end
+      adr_reg=nil
+      num_adr=num_adr%4+mem_map[names[op]]
+      op="pok"
+    end
     if adr_reg and reg then
       local bytes=bitpack({5,1,3,1,3, 3},id,op=="pek" and 1 or 0,reg,1,adr_reg,0)
       return true,bytes
