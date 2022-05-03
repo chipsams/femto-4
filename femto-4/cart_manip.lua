@@ -3,7 +3,7 @@ s={}
 
 function s.tostring()
   local txt=""
-    txt=txt.."hi! this is a ◕ FEMTO-4 cart, check it out here:\nhttps://github.com/chipsams/femto-4 \n__code__\n"
+    txt=txt.."hi! this is a ◕ FEMTO-4 cart, check it (and its documentation) out here:\nhttps://github.com/chipsams/femto-4 \n__code__\n"
     txt=txt..table.concat(codestate.code,"\n"):gsub("\n(__[%l%d_]+__)","\n~%1")
     txt=txt.."\n__gfx__\n"
   local addlines={}
