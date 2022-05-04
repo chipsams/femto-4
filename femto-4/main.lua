@@ -139,7 +139,6 @@ function love.load()
 
 
   require"graphics"
-  print("graphics loaded")
   screen={
     x=0,
     y=0,
@@ -341,7 +340,6 @@ function love.textinput(key)
   keysource="textinput"
   repeatfn=currentscene.textinput
   if currentscene.textinput then
-    print("call")
     currentscene.textinput(key)
   end
 end

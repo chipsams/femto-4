@@ -237,6 +237,23 @@ local ops_definition={
     if not opnames[opname] then return false end
     return true,bitpack({5,3,3,3,2},id,r1,r2,r3,opnames[opname])
   end,". r£r1 r£r2 r£r3"},
+  {{"mov","swp"},function(b1,b2)
+    local _,r1,r2,swp=bitsplit(b1,b2,{5,3,3,1,4})
+    r1,r2=get_regs(r1,r2)
+    if swp==1 then
+      local v1,v2=r1(),r2()
+      r1(v2)
+      r2(v1)
+    else
+      r2(r1())
+    end
+  end,function(id,line)
+    local tokens=tokenize(line)
+    local name,r1n,r2n=unpack(tokens)
+    local r1,r2=get_reg_names(r1n,r2n)
+    if not (r1 and r2) then return false,{0,0} end
+    return true,bitpack({5,3,3,1,4},id,r1,r2,name=="swp" and 1 or 0,0)
+  end,". r r"},
   {"adc",function(b1,b2)--add constant
     local _,t1,negative,value=bitsplit(b1,b2,{5,3,1,7})
     local r1=get_regs(t1)
@@ -547,7 +564,6 @@ local ops_definition={
       local b3,b4=mem[s.pc],mem[s.pc+1]
       adr=bit.bor(bit.lshift(b3,8),b4)
     end
-    print(basen(adr,16,3))
     if peek==1 then
       t_reg(mem[adr])
     else
@@ -577,7 +593,6 @@ local ops_definition={
       local bytes=bitpack({5,1,3,1,3, 3},id,op=="pek" and 1 or 0,reg,1,adr_reg,0)
       return true,bytes
     elseif num_adr and reg then
-      print(basen(num_adr,16,3))
       local bytes=bitpack({5,1,3,1,3, 3},id,op=="pek" and 1 or 0,reg,0,0,0)
       table.insert(bytes,bit.band(bit.rshift(num_adr,8),0xff))
       table.insert(bytes,bit.band(num_adr,0xff))
@@ -586,6 +601,7 @@ local ops_definition={
     return false,{0,0}
   end,". r|n r"}
 }
+assert(#ops<=31,"too many opcodes were defined by me! whoops, make sure to let me know.")
 local ops={}
 local op_parse={}
 local op_names={}
