@@ -16,12 +16,12 @@ function pset(x,y,c)
   if mem[mem_map.hirez]==1 then
     if x>=0 and x<=127 and y>=0 and y<=47 then
       local i=bit.rshift(x,3)+bit.lshift(y,4)
-      mem[i+mem_map.screen] = bit.bor(bit.band(mem[i+mem_map.screen],bit.bnot(bit.lshift(1,bit.band(x,7)))),bit.lshift(c%2,bit.band(x,7)))
+      mem[i+mem_map.screen] = bit.bor(bit.band(mem[i+mem_map.screen],bit.bnot(bit.lshift(1,bit.band(x,7)))),bit.lshift(bit.band(c,1),bit.band(x,7)))
     end
   else
     if x>=0 and x<=63 and y>=0 and y<=47 then
       local i=bit.rshift(x,2)+bit.lshift(y,4)
-      mem[i+mem_map.screen] = bit.bor(bit.band(mem[i+mem_map.screen],bit.bnot(bit.lshift(3,x%4*2))),bit.lshift(c%4,x%4*2))
+      mem[i+mem_map.screen] = bit.bor(bit.band(mem[i+mem_map.screen],bit.bnot(bit.lshift(3,bit.lshift(bit.band(x,3),1)))),bit.lshift(bit.band(c),bit.lshift(bit.band(x,3),1)))
     end
   end
 end
