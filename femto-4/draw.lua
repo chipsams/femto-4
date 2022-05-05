@@ -3,6 +3,7 @@ local s={}
 
 local rdown=false
 local ctrlheld=false
+local shiftheld=false
 
 s.sprite=0
 s.spritepagex=0
@@ -270,7 +271,7 @@ function s.draw()
   plot_imgdata(cursor,mouse.x,mouse.y,5)
 end
 
-function s.keypressed(key)
+function s.keypressed(key,isrepeat)
   if key=="q" then
     s.sprite=s.sprite-s.spritescale
   elseif key=="e" then
@@ -296,8 +297,7 @@ function s.keypressed(key)
       end
       sset(sx+s.spritescale*4-1,sy+ly,savepix)
     end
-  end
-  if key=="right" then
+  elseif key=="right" then
     for ly=0,s.spritescale*4-1 do
       local savepix=sget(sx+s.spritescale*4-1,sy+ly)
       for lx=s.spritescale*4-1,1,-1 do
@@ -305,8 +305,7 @@ function s.keypressed(key)
       end
       sset(sx,sy+ly,savepix)
     end
-  end
-  if key=="up" then
+  elseif key=="up" then
     for lx=0,s.spritescale*4-1 do
       local savepix=sget(sx+lx,sy)
       for ly=0,s.spritescale*4-2 do
@@ -314,8 +313,7 @@ function s.keypressed(key)
       end
       sset(sx+lx,sy+s.spritescale*4-1,savepix)
     end
-  end
-  if key=="down" then
+  elseif key=="down" then
     for lx=0,s.spritescale*4-1 do
       local savepix=sget(sx+lx,sy+s.spritescale*4-1)
       for ly=s.spritescale*4-1,1,-1 do
@@ -323,8 +321,16 @@ function s.keypressed(key)
       end
       sset(sx+lx,sy,savepix)
     end
-  end
-  if key=="lctrl" then
+  elseif key=="s" then
+    if shiftheld then
+      cart_manip.saveimg()
+    else
+      local txt=cart_manip.tostring()
+      love.system.setClipboardText(txt)
+    end
+  elseif key=="lshift" then
+    shiftheld=true
+  elseif key=="lctrl" then
     ctrlheld=true
   end
 end
@@ -332,8 +338,9 @@ end
 function s.keyreleased(key)
   if key=="r" then
     rdown=false
-  end
-  if key=="lctrl" then
+  elseif key=="lshift" then
+    shiftheld=true
+  elseif key=="lctrl" then
     ctrlheld=false
   end
 end

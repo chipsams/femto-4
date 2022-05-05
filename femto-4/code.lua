@@ -192,7 +192,7 @@ function s.update()
     local new_line=flr((mouse.y-2+s.code_scrollpos*4)/4)
     if not shiftheld then selecting=false end
     if s.code[new_line] then
-      local new_row=flr((mouse.x-cursorpos(new_line,0)+1)/4)
+      local new_row=flr((mouse.x-cursorpos(new_line,0)+1-s.code_scrollrow*4)/4)
       s.editing_line=new_line
       s.editing_row=mid(0,new_row,#s.code[s.editing_line])
       if mouseselect then
@@ -353,8 +353,12 @@ function s.keypressed(key,isrepeat)
   elseif key=="lctrl" then ctrlheld=true
   elseif key=="space" then s.keypressed(" ")
   elseif key=="s" and ctrlheld and not isrepeat then
-    local txt=cart_manip.tostring()
-    love.system.setClipboardText(txt)
+    if shiftheld then
+      cart_manip.saveimg()
+    else
+      local txt=cart_manip.tostring()
+      love.system.setClipboardText(txt)
+    end
   elseif key=="o" and ctrlheld and not isrepeat then
     local txt=love.system.getClipboardText()
     cart_manip.fromstring(txt)
