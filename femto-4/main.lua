@@ -216,9 +216,9 @@ function love.load()
   --at the moment should be codestate!
   currentscene=codestate
  
-  mem[mem_map.hirez]=confstate.settings.hires and 1 or 0
+  mem[mem_map.hirez]=confstate.settings.editor_settings.display.hires and 1 or 0
   for l=0,3 do
-    mem[mem_map.screen_pal+l]=confstate.settings.editor_pal[l+1]  --init screen pallete
+    mem[mem_map.screen_pal+l]=confstate.settings.editor_settings.display.editor_pal[l+1]  --init screen pallete
     mem[mem_map.draw_pal+l]=l  --init draw pallete
     mem[mem_map.transparency_pal+l]=1  --init transparency pallete
   end
@@ -241,10 +241,9 @@ local keysource
 escape_timer=0
 function love.update(dt)
   if repeatkey then
-    --print(repeattimer,confstate.settings.keyboard.delay,confstate.settings.keyboard["repeat"])
     repeattimer=repeattimer+dt
-    if repeattimer>confstate.settings.keyboard.delay then
-      repeattimer=repeattimer-confstate.settings.keyboard["repeat"]
+    if repeattimer>confstate.settings.editor_settings.keyboard.delay then
+      repeattimer=repeattimer-confstate.settings.editor_settings.keyboard["repeat"]
       if repeatfn then repeatfn(repeatkey,true) end
     end
   end

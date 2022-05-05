@@ -1,9 +1,9 @@
 local s={}
 
 function s.quit()
-  mem[mem_map.hirez]=confstate.settings.hires and 1 or 0
+  mem[mem_map.hirez]=confstate.settings.editor_settings.display.hires and 1 or 0
   for l=0,3 do
-    mem[mem_map.screen_pal+l]=confstate.settings.editor_pal[l+1]  --init screen pallete
+    mem[mem_map.screen_pal+l]=confstate.settings.editor_settings.display.editor_pal[l+1]  --init screen pallete
     mem[mem_map.draw_pal+l]=l  --init draw pallete
     mem[mem_map.transparency_pal+l]=1  --init transparency pallete
   end
@@ -478,7 +478,7 @@ local ops_definition={
     label=label..":"
     if not s.labels[label] then return false end
     return true,bitpack({5,1,1,1,8+8},id,(op=="cjp" or op=="cfn") and 1 or 0,(op=="fun" or op=="cfn") and 1 or 0,stk=="b" and 1 or 0,s.labels[label])
-  end,". 'a|'b? l"},
+  end,". '^[ab]$? l"},
   {"ret",function(b1,b2)
     local _,stack=bitsplit(b1,b2,{5,1,10})
     local stk=get_regs(stack==1 and reg_names.stkb or reg_names.stka)

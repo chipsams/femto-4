@@ -2,23 +2,28 @@ local s={}
 
 local toml=require("toml_lua/toml")
 s.settings_default={
-  editor_pal={0,1,2,3},
-  keyboard={["repeat"]=0.05,delay=0.4},
-  hires=false,
+  editor_settings={
+    display={
+      editor_pal={0,1,2,3},
+      hires=false,
+    },
+    keyboard={
+      ["repeat"]=0.05,
+      delay=0.4
+    },
+  }
 }
 
 if love.filesystem.getInfo("config.toml") then
   local data=love.filesystem.read("config.toml")
-  print("data:",data)
+  --print("data:",data)
   s.settings=toml.parse(data,{})
-  deep_print({set=s.settings})
-  print(s.settings.editor_pal)
+  --deep_print({set=s.settings})
   deep_default(s.settings,s.settings_default)
 else
   s.settings=deep_clone(s.settings_default)
 end
 
-print("completed load")
 
 local function savesettings()
   love.filesystem.write("config.toml",toml.encode(deep_clone(s.settings)))
@@ -43,10 +48,10 @@ s.settings_layout={
     open=true,
     name="pallete",
     contents={
-      {type="number",name="col 0",min=0,max=255,step=1,target={s.settings.editor_pal,1}},
-      {type="number",name="col 1",min=0,max=255,step=1,target={s.settings.editor_pal,2}},
-      {type="number",name="col 2",min=0,max=255,step=1,target={s.settings.editor_pal,3}},
-      {type="number",name="col 3",min=0,max=255,step=1,target={s.settings.editor_pal,4}},
+      {type="number",name="col 0",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,1}},
+      {type="number",name="col 1",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,2}},
+      {type="number",name="col 2",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,3}},
+      {type="number",name="col 3",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,4}},
     },
   },
   {
@@ -54,11 +59,11 @@ s.settings_layout={
     open=true,
     name="keyboard",
     contents={
-      {type="number",name="repeat",min=0.025,step=0.025,max=0.5,target={s.settings.keyboard,"repeat"}},
-      {type="number",name="delay",min=0.05,step=0.05,max=2,target={s.settings.keyboard,"delay"}}
+      {type="number",name="repeat",min=0.025,step=0.025,max=0.5,target={s.settings.editor_settings.keyboard,"repeat"}},
+      {type="number",name="delay",min=0.05,step=0.05,max=2,target={s.settings.editor_settings.keyboard,"delay"}}
     }
   },
-  {type="toggle",name="hi res",target={s.settings,"hires"}},
+  {type="toggle",name="hi res",target={s.settings.editor_settings.display,"hires"}},
 }
 
 s.display={}
@@ -81,7 +86,6 @@ function calctab(contents,dx,dy)
       end
     elseif v.type=="number" then
       table.insert(s.display,{type="text",txt=v.name..":"..v.target[1][v.target[2]],x=dx,y=dy,c=1,click=function()
-        print(mouse.lb)
         local inc=mouse.lb and 1 or -1
         v.target[1][v.target[2]]=(v.target[1][v.target[2]]+inc*v.step-v.min)%(v.max-v.min+1)+v.min
         savesettings()
