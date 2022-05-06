@@ -21,6 +21,7 @@ function s.mousedown()
     if s.buttons[bx][2]==execstate then
       loadcode()
     else
+      lasteditorstate=s.buttons[bx][2]
       currentscene=s.buttons[bx][2]
     end
   end

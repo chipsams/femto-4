@@ -157,9 +157,11 @@ function love.load()
   page_select_cursor_png=love.image.newImageData("assets/page_select_cursor.png")
   cursor=love.image.newImageData("assets/cursor.png")
   pal=love.image.newImageData("assets/pallete.png")
+  top_of_term=love.image.newImageData("assets/top_of_term.png")
 
   love.window.setIcon(love.image.newImageData("assets/logo.png"))
   love.window.setTitle("femto-4")
+
 
   font=love.image.newImageData("assets/font.png")
   
@@ -209,12 +211,14 @@ function love.load()
   execstate=require"execute"
   codestate=require"code"
   drawstate=require"draw"
+  termstate=require"term"
   teststate=require"test" --test state isn't to be shown to the user, really
   buttons  =require"editorbuttons"
 
   --change this to change the starting state
   --at the moment should be codestate!
-  currentscene=codestate
+  lasteditorstate=codestate
+  currentscene=termstate
  
   mem[mem_map.hirez]=confstate.settings.editor_settings.display.hires and 1 or 0
   for l=0,3 do

@@ -8,7 +8,7 @@ function s.quit()
     mem[mem_map.transparency_pal+l]=1  --init transparency pallete
   end
   
-  currentscene=s.returnscene or codestate
+  currentscene=s.returnscene or termstate
 end
 
 local pow2={}
@@ -58,6 +58,8 @@ ops={
   "=",
   ">",
   "<",
+  ".",
+  '"'
 }
 
 function better_tonumber(v)
@@ -70,6 +72,32 @@ function better_tonumber(v)
   local _,_,as_qat=v:find("0q([0123]+)")
   if as_qat then return tonumber(as_qat,4) end
   return tonumber(v)
+end
+
+function process_string(st)
+  st=tostring(st)
+  if st:sub(1,1)=='"' then
+    local newst=""
+    local escape=false
+    for l=2,#st-1 do
+      local ch=st:sub(l,l)
+      if escape then
+        if ch=="n" then
+          newst=newst.."\n"
+        else
+          newst=newst..ch
+        end
+        escape=false
+      elseif ch=="\\" then
+        escape=not escape
+      else
+        escape=false
+        newst=newst..ch
+      end
+    end
+    return newst
+  end
+  return st
 end
 
 function tokenize(st)
@@ -105,6 +133,25 @@ function tokenize(st)
       k=st:find("[^%a%d_]",k+1) or #st+1
       add_token(start,k-1)
       k=k-1
+    elseif ch=='"' then
+      local escaped=false
+      local start=k
+      while k<#st do
+        k=k+1
+        local ch=st:sub(k,k)
+        if ch=="\\" then
+          escaped=not escaped
+        elseif ch=='"' then
+          if escaped then
+            escaped=false
+          else break
+          end
+        else
+          escaped=false
+        end
+      end
+      add_token(start,k)
+      k=k+1
     else
       for _,op in pairs(ops) do
         if st:find(op,k,true)==k then
@@ -728,6 +775,7 @@ function s.update(dt)
 end
 
 function s.keypressed(key)
+  if key=="escape" then s.quit() end
   if key=="backspace" then s.quit() end
 end
 

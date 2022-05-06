@@ -303,7 +303,9 @@ function s.keypressed(key,isrepeat)
   local lastline=s.editing_line
   local cur_line=s.code[s.editing_line]
   refresh_bounds()
-  if     key=="down"  then s.editing_line=s.editing_line+1 resetselect()
+  if key=="escape" then  
+    currentscene=termstate
+  elseif key=="down"  then s.editing_line=s.editing_line+1 resetselect()
   elseif key=="up"    then s.editing_line=s.editing_line-1 resetselect()
   elseif key=="left"  then
     s.editing_row = s.editing_row-1 
@@ -353,19 +355,20 @@ function s.keypressed(key,isrepeat)
   elseif key=="lctrl" then ctrlheld=true
   elseif key=="space" then s.keypressed(" ")
   elseif key=="s" and ctrlheld and not isrepeat then
-    if shiftheld then
-      cart_manip.saveimg()
-    else
-      local txt=cart_manip.tostring()
-      love.system.setClipboardText(txt)
-    end
+    termstate.commands.save.fn('"'..termstate.default_filename:gsub("\\","\\\\"):gsub("\"","\\\"")..'"')
+
   elseif key=="o" and ctrlheld and not isrepeat then
     local txt=love.system.getClipboardText()
     cart_manip.fromstring(txt)
   elseif key=="c" and ctrlheld and not isrepeat then
-    if selecting and ctrlheld then
-      local txt=get_selected()
+    if shiftheld then
+      local txt=cart_manip.tostring()
       love.system.setClipboardText(txt)
+    else
+      if selecting and ctrlheld then
+        local txt=get_selected()
+        love.system.setClipboardText(txt)
+      end
     end
   elseif key=="v" and ctrlheld and not isrepeat then
     if selecting then remove_selected("") end

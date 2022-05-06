@@ -171,7 +171,7 @@ function setline(x1,x2,y,c)
   local byte=0
   if mem[mem_map.hirez]==1 then
     for _bit=0,7 do byte=byte+bit.lshift(docolour(c)%2,_bit) end
-    memset(mem_map.screen+math.ceil(dx1/8)+y*16,math.floor(dx2/8)-math.floor((dx1+15)/8),byte)
+    memset(mem_map.screen+math.ceil(dx1/8)+y*16,math.floor(dx2/8)-math.floor((dx1)/8),byte)
     for l=dx1,bit.lshift(bit.rshift(dx1+7,3),3) do
       pset(l,y,c)
     end
@@ -182,7 +182,7 @@ function setline(x1,x2,y,c)
     end
   else
     for _bit=0,3 do byte=byte+bit.lshift(docolour(c),_bit*2) end
-    memset(mem_map.screen+math.ceil(dx1/4)+y*16,math.floor(dx2/4)-math.floor((dx1+7)/4),byte)
+    memset(mem_map.screen+math.ceil(dx1/4)+y*16,math.floor(dx2/4)-math.floor((dx1+3)/4),byte)
     for l=dx1,bit.lshift(bit.rshift(dx1+3,2),2) do
       pset(l,y,c)
     end
@@ -332,8 +332,17 @@ end
 ---@param span number
 ---@param value number
 function memset(addr,span,value)
-  for l=addr,addr+span do
-    mem[l]=value
+  for l=0,span-1 do
+    mem[addr+l]=value
+  end
+end
+function memcpy(addr1,addr2,span)
+  local tmpdata={}
+  for l=0,span-1 do
+    tmpdata[l]=mem[addr1+l]
+  end
+  for l=0,span-1 do
+    mem[addr2+l]=tmpdata[l]
   end
 end
 

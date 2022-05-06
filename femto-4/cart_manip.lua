@@ -42,6 +42,10 @@ function s.fromstring(st)
       table.insert(codestate.errors,{})
       codestate.errorcheck(#codestate.code)
     end
+    if #codestate.code==0 then
+      codestate.code={""}
+      table.insert(codestate.errors,{})
+    end
     codestate.selecting=false
     codestate.editing_line=#codestate.code
     codestate.editing_row=#codestate.code[#codestate.code]
@@ -71,7 +75,7 @@ function decode_lobits(v)
 end
 
 base_img=love.image.newImageData("assets/cassette_blank.png")
-function s.saveimg()
+function s.saveimg(filename)
   local img=base_img:clone()
   local width=img:getWidth()
   local v1,v2,v3,v4=0,0,0,0
@@ -95,7 +99,7 @@ function s.saveimg()
     local n=st:sub(l,l):byte()
     write(n)
   end
-  img:encode("png",math.random()..".png")
+  img:encode("png",filename)
 end
 
 function s.decode_pix(r,g,b,a)
@@ -109,8 +113,13 @@ function s.decode_pix(r,g,b,a)
   bit.lshift(v4,6)
 end
 
-function love.filedropped(file)
-  if file:getFilename():match(".*%.png$") then
+function s.openfile(file,source)
+  if file:getFilename():match(".*%.f4%.png$") then
+    if source=="dropped" then
+      term_print("loaded dropped file")
+    else
+      term_print("loaded "..file:getFilename())
+    end
     local st={}
     local img=love.image.newImageData(file)
     local len=bit.lshift(s.decode_pix(img:getPixel(0,0)),8)+
@@ -127,10 +136,19 @@ function love.filedropped(file)
     s.fromstring(love.data.decompress("string","zlib",table.concat(st,"")))
     print("End of file")
   elseif file:getFilename():match(".*%.f4$") then
+    if source=="dropped" then
+      term_print("loaded dropped file")
+    else
+      term_print("loaded "..file:getFilename())
+    end
     file:open("r")
     s.fromstring(file:read())
     file:close()
   end
+end
+
+function love.filedropped(file)
+  s.openfile(file,"dropped")
 end
 
 return s

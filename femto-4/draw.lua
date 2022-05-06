@@ -272,7 +272,9 @@ function s.draw()
 end
 
 function s.keypressed(key,isrepeat)
-  if key=="q" then
+  if key=="escape" then
+    currentscene=termstate  
+  elseif key=="q" then
     s.sprite=s.sprite-s.spritescale
   elseif key=="e" then
     s.sprite=s.sprite+s.spritescale
