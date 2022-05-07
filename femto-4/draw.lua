@@ -332,7 +332,7 @@ function s.keypressed(key,isrepeat)
     end
   elseif key=="lshift" then
     shiftheld=true
-  elseif key=="lctrl" then
+  elseif  is_ctrl_like(key) then
     ctrlheld=true
   end
 end
@@ -342,7 +342,7 @@ function s.keyreleased(key)
     rdown=false
   elseif key=="lshift" then
     shiftheld=true
-  elseif key=="lctrl" then
+  elseif is_ctrl_like(key) then
     ctrlheld=false
   end
 end

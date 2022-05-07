@@ -94,6 +94,9 @@ function parsecart(st)
   return blocks
 end
 
+function is_ctrl_like(key)
+  return key=="lctrl" or key=="rctrl" or key=="lgui" or key=="rgui"
+end
 
 --https://stackoverflow.com/questions/3554315/lua-base-converter
 local floor,insert = math.floor, table.insert

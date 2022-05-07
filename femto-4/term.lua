@@ -129,7 +129,7 @@ end
 function s.keypressed(key,isrepeat)
   if key=="escape" then
     currentscene=lasteditorstate
-  elseif key=="lctrl" then
+  elseif is_ctrl_like(key) then
     ctrldown=true
   elseif key=="r" and ctrldown then
     ctrldown=false
@@ -154,7 +154,7 @@ function s.keypressed(key,isrepeat)
 end
 
 function s.keyreleased(key)
-  if key=="lctrl" then
+  if is_ctrl_like(key) then
     ctrldown=false
   end
 end

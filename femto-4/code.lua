@@ -354,7 +354,7 @@ function s.keypressed(key,isrepeat)
     end
     selecting=true
     shiftheld=true
-  elseif key=="lctrl" then ctrlheld=true
+  elseif is_ctrl_like(key) then ctrlheld=true
   elseif key=="space" then s.keypressed(" ")
   elseif key=="s" and ctrlheld and not isrepeat then
     termstate.commands.save.fn('"'..termstate.default_filename:gsub("\\","\\\\"):gsub("\"","\\\"")..'"')
@@ -423,7 +423,7 @@ end
 function s.keyreleased(key)
   if key=="lshift" then
     shiftheld=false
-  elseif key=="lctrl" then
+  elseif is_ctrl_like(key) then
     ctrlheld=false
   end
 end
