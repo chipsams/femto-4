@@ -1,6 +1,7 @@
 
 local s={}
 
+love.filesystem.createDirectory("carts")
 function s.tostring()
   local txt=""
     txt=txt.."hi! this is a ◕ FEMTO-4 cart, check it (and its documentation) out here:\nhttps://github.com/chipsams/femto-4 \n__code__\n"
