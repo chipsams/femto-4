@@ -469,12 +469,12 @@ local ops_definition={
       --  111 r2 (flip x)
       local flipx_r,flipy_r=get_reg_names(flipx,flipy)
       local w_r,h_r=get_reg_names(w,h)
-      local bytes=bitpack({5,3,3,3,1,1, 1,3,1,3, 1,3,1,3},id, 0,r2,r3, better_tonumber(r1) and 1 or 0,1,
+      local bytes=bitpack({5,3,3,3,1,1, 1,3,1,3, 1,3,1,3},id, 0,r2,r3, better_tonumber(or1) and 1 or 0,1,
       w_r and 0 or 1,w_r or (better_tonumber(w) or 1)-1,flipx_r and 0 or 1,flipx_r or (flipx=="true" and 1 or 0),
       h_r and 0 or 1,h_r or (better_tonumber(h) or 1)-1,flipy_r and 0 or 1,flipy_r or (flipy=="true" and 1 or 0)
       )
       
-      if better_tonumber(r1) then table.insert(s.code,3,bit.band(better_tonumber(r1),255)) end
+      if better_tonumber(or1) then table.insert(bytes,3,bit.band(better_tonumber(or1),255)) end
 
       return true,bytes
     elseif better_tonumber(or1) then
@@ -587,7 +587,11 @@ local ops_definition={
     s.cpubudget=s.cpubudget-9
     local _,reg_mode,stat,t_reg=bitsplit(b1,b2,{5,1,7,3})
     t_reg=get_regs(t_reg)
-    t_reg(stat_funcs[stat]())
+    if stat_funcs[stat] then
+      t_reg(stat_funcs[stat]())
+    else
+      t_reg(0)
+    end
   end,function(id,line)
     local tokens=tokenize(line)
     local _,stat,reg = unpack(tokens)
