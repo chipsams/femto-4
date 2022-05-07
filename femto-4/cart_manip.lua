@@ -38,7 +38,8 @@ function s.fromstring(st)
   if blocks.code then
     codestate.code={}
     codestate.errors={}
-    for row in blocks.code:gmatch("[^\n]+") do
+    for row in (blocks.code.."\n"):gmatch("[^\n]*\n") do
+      row=row:sub(1,-2)
       table.insert(codestate.code,row)
       table.insert(codestate.errors,{})
       codestate.errorcheck(#codestate.code)

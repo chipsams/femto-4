@@ -188,7 +188,10 @@ function loadcode()
 end
 
 function s.update()
-  if love.mouse.isDown(1) and mouse.onscreen then
+  if mouse.p_lb and not mouse.lb then
+    recalc_screen()
+  end
+  if mouse.lb and mouse.onscreen then
     local new_line=flr((mouse.y-2+s.code_scrollpos*4)/4)
     if not shiftheld then selecting=false end
     if s.code[new_line] then
@@ -209,7 +212,6 @@ function s.mousedown()
   if shiftheld then
     mouseselect=true
   end
-  recalc_screen()
   buttons.mousedown()
 end
 
