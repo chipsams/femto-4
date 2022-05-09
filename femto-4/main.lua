@@ -171,39 +171,6 @@ function love.load()
   renderdata_double_width=love.image.newImageData(128,48)
   renderscreen_double_width=love.graphics.newImage(renderdata_double_width)
 
-  local pows={}
-  for l=0,7 do pows[l]=2^l end
-  --[[
-    local byte_img_pre=love.image.newImageData(1,256)
-    byte_w=1
-    byte_img_pre:mapPixel(function(x,y)
-      local v=(y+1)/256
-      return v,v,v
-    end)
-  --]]
-  ---[[
-    local byte_img_pre=love.image.newImageData(4,256)
-    byte_w=4
-    byte_img_pre:mapPixel(function(x,y)
-      x=bit.band(x,bit.bnot(0x1))
-      local v=bit.band(bit.rshift(y,pows[x]),0x3)/3
-      return v,v,v
-    end)
-  --]]
-  --[[
-    local byte_img_pre=love.image.newImageData(8,256)
-    byte_w=8
-    byte_img_pre:mapPixel(function(x,y)
-      local v=bit.band(y,pows[x])>0 and 1 or 0
-      return v,v,v
-    end)
-  --]]
-  byte_img=love.graphics.newImage(byte_img_pre)
-  byte_sprite_batch = love.graphics.newSpriteBatch(byte_img)
-  byte_quads={}
-  for l=0,255 do
-    byte_quads[l]=love.graphics.newQuad(0,l,byte_w,1,byte_img:getDimensions())
-  end
   
   cart_manip=require"cart_manip"
   
@@ -307,17 +274,6 @@ function love.draw()
     love.graphics.print("quitting"..string.rep(".",math.floor(escape_timer*4)),screen.x,screen.y,0,2,2)
   end
 
-  --[[
-    local dx,dy=screen.x+screen.scale*xmult*64+byte_w*3,0
-    byte_sprite_batch:clear()
-    for y=0,255 do
-      byte_sprite_batch:add(byte_quads[y],dx-byte_w*3,dy+y*2,0,2,2)
-      for x=0,255 do
-        byte_sprite_batch:add(byte_quads[ mem[x+y*256] ],dx+x*byte_w*2,dy+y*2,0,2,2)
-      end
-    end
-    love.graphics.draw(byte_sprite_batch)
-  --]]
 
   love.graphics.print(love.timer.getFPS(),1,1)
 end
