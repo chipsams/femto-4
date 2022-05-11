@@ -1,6 +1,6 @@
 local s={}
 
-s.lines={"","",""}
+s.lines={"",""}
 
 s.default_filename="untitled.f4"
 
@@ -97,7 +97,7 @@ end
 
 function s.draw(t)
   cls(0)
-  plot_imgdata(top_of_term,0,-s.scrollrow*4)
+  plot_imgdata(top_of_term,1,1-s.scrollrow*4)
   sc_write("",1,1-(s.scrollrow-math.floor(s.scrollrow))*4,0)
   for l=math.floor(s.scrollrow+1),s.scrollrow+14 do
     if s.lines[l] then
