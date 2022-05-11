@@ -333,7 +333,7 @@ local ops_definition={
     if not r then return end
     if not v then return end
     return true,bitpack({5,3,1,15},id,r,(sign=="-") and 1 or 0,v)
-  end,". r '%-|'%+? n"},--load constant
+  end,". r '^%-$|'^%+$? n"},--load constant
   {"plt",function(b1,b2)--pset
     local _,r1,r2,or3,_,literal=bitsplit(b1,b2,{5,3,3,3,1,1})
     local r1,r2,r3=get_regs(r1,r2,or3)
@@ -419,6 +419,95 @@ local ops_definition={
     --for _,byte in ipairs(bytes) do print(basen(byte,2,8)) end
     return true,bytes
   end,". r r r r|n"},
+  {"lob",function(b1,b2)
+    local _,reg_mode,a_reg,reg_count,format,mode=bitsplit(b1,b2,{5,1,3,3,3,1})
+    a_reg=get_regs(a_reg)
+    local adr
+    if reg_mode==1 then
+      adr=a_reg()
+    else
+      s.pc=s.pc+2
+      local b3,b4=mem[s.pc],mem[s.pc+1]
+      adr=bit.bor(bit.lshift(b3,8),b4)
+    end
+
+    --print(adr)
+    --print(format)
+    --print(reg_count)
+    --print(mode)
+
+    local regs={}
+    for l=0,reg_count/2 do
+      local r1,r2=bitsplit(mem[s.pc+2],0,{4,4,8})
+      table.insert(regs,r1)
+      table.insert(regs,r2)
+      print(l)
+      s.pc=s.pc+1
+    end
+    print(unpack(regs))
+    local w=1
+    if format==1 then
+    elseif format==2 then
+    else w=8 end
+
+    for l=1,reg_count+1 do
+      print(l,regs[l],format,mode,adr)
+      s.registers[regs[l]+1]=s.mem_reg(adr,format,mode)
+      adr=adr+w
+    end
+
+  end,function(id,line)
+    local tokens=tokenize(line)
+
+    table.remove(tokens,1)
+    local address=table.remove(tokens,1)
+    local format =table.remove(tokens,1)
+
+    local modes={
+      ["reg"]=0,
+      ["stk"]=1
+    }
+
+    local mode=0
+    if modes[tokens[1]] then
+      mode=modes[table.remove(tokens,1)]
+    end
+
+    local formats={
+      ["n"]=0,
+      ["u8"]=1,
+      ["s8"]=2,
+    }
+
+    if not formats[format] then return false end
+
+    local registers={}
+    for l,register in pairs(tokens) do
+      table.insert(registers,get_reg_names(register))
+    end
+    print(unpack(registers))
+    print(address)
+    print(id)
+    if better_tonumber(address) then
+      local p_num_registers=#registers
+      if #registers%2==1 then table.insert(registers,0) end
+      local elemcount=gentbl(4,#registers)
+      local bytes=bitpack({5,1,3,3,3,1},id, 0,0,p_num_registers-1,formats[format],mode)
+      for _,v in pairs(bitpack({16},better_tonumber(address))) do print(v) table.insert(bytes,v) end
+      for _,v in pairs(bitpack(elemcount,unpack(registers))) do print(v) table.insert(bytes,v) end
+      print("num bytes:",unpack(bytes))
+      return true,bytes
+    elseif get_reg_names(address) then
+      
+      local p_num_registers=#registers
+      if #registers%2==1 then table.insert(registers,0) end
+      local elemcount=gentbl(4,#registers)
+      local bytes=bitpack({5,1,3,3,3,1},id, 1,get_reg_names(address),p_num_registers-1,formats[format],mode)
+      for _,v in pairs(bitpack(elemcount,unpack(registers))) do table.insert(bytes,v) end
+      print("reg bytes:",unpack(bytes))
+      return true,bytes
+    end
+  end,". n|r '^u8$|'^s8$|'^n$£not_a_format '^stk$|'^reg$? r r? r? r? r? r? r? r?"},
   {"spr",function(b1,b2)
     local _,r1,r2,r3,const_spr,extended_mode=bitsplit(b1,b2,{5,3,3,3,1,1})
     r1,r2,r3=get_regs(r1,r2,r3)
@@ -693,22 +782,46 @@ local function parsecommand(b1,b2)
   local i=bitsplit(b1,b2,{5,11})
   if ops[i] then
     local name=ops_definition[i][1]
-    --print("parsed:",type(name)=="table" and name[1] or name)
+    print("parsed:",type(name)=="table" and name[1] or name)
     ops[i](b1,b2)
   end
   
 end
 
 
-local function reg(initv,fn)
-  local v=initv
-  local fn=fn
-  fn=fn or function(w)
-    local pv=v
-    if w then v=w end
-    return pv
+
+function s.mem_reg(addr,numberformat,mode,clear)
+  local addr=addr
+  local tmem
+      if numberformat==1 then tmem=mem
+  elseif numberformat==2 then tmem=memsigned
+  else                        tmem=memdouble addr=math.floor(addr/8)
   end
-  return fn
+
+  if clear then tmem[addr]=0 end
+
+  --mode zero is the default
+  if mode==1 then--stack mode
+    return function(w)
+      if w then
+        tmem[addr+tmem[addr]+1]=w 
+        tmem[addr]=tmem[addr]+1
+      else
+        if tmem[addr]>0 then
+          tmem[addr]=tmem[addr]-1
+          return tmem[addr+tmem[addr]+1]
+        else
+          return 0
+        end
+      end
+    end
+  else
+    return function(w)
+      local pv=tmem[addr]
+      if w then tmem[addr]=w end
+      return pv
+    end
+  end
 end
 
 function s.init()
@@ -724,35 +837,14 @@ function s.init()
   mem[mem_map.transparency_pal]=0
   
   s.registers={
-    reg(0),reg(0),reg(0), -- a-c (gp)
-    reg(0),reg(0), -- x-y (gp)
-    reg(0), --t (for conditions)
-    reg(0,function(w)
-      if w then
-        mem[mem_map.stack_start_a+mem[mem_map.stack_pointer_a]]=w 
-        mem[mem_map.stack_pointer_a]=mem[mem_map.stack_pointer_a]+1
-      else
-        if mem[mem_map.stack_pointer_a]>0 then
-          mem[mem_map.stack_pointer_a]=mem[mem_map.stack_pointer_a]-1
-          return mem[mem_map.stack_start_a+mem[mem_map.stack_pointer_a]]
-        else
-          return 0
-        end
-      end
-    end),--stack a
-    reg(0,function(w)
-      if w then
-        mem[mem_map.stack_start_b+mem[mem_map.stack_pointer_b]]=w 
-        mem[mem_map.stack_pointer_b]=mem[mem_map.stack_pointer_b]+1
-      else
-        if mem[mem_map.stack_pointer_b]>0 then
-          mem[mem_map.stack_pointer_b]=mem[mem_map.stack_pointer_b]-1
-          return mem[mem_map.stack_start_b+mem[mem_map.stack_pointer_b]]
-        else
-          return 0
-        end
-      end
-    end)--stack b
+    s.mem_reg(mem_map.regs_start   ,0,0,true), -- a (gp)
+    s.mem_reg(mem_map.regs_start+ 8,0,0,true), -- b (gp)
+    s.mem_reg(mem_map.regs_start+16,0,0,true), -- c (gp)
+    s.mem_reg(mem_map.regs_start+24,0,0,true), -- x (gp)
+    s.mem_reg(mem_map.regs_start+32,0,0,true), -- y (gp)
+    s.mem_reg(mem_map.regs_start+40,0,0,true), -- t (for conditions)
+    s.mem_reg(mem_map.stack_pointer_a,1,1,true),
+    s.mem_reg(mem_map.stack_pointer_b,1,1,true)
   }
   s.running=true
   s.pc=mem_map.code

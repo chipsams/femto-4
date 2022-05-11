@@ -27,10 +27,11 @@ mem_map={
   draw_pal=0x1a14,--to 1a17 
   transparency_pal=0x1a18,--to 1a1b
 
+  regs_start=0x1d00,
+
+  --stacks can safely index 254 values
   stack_pointer_a=0x1e00,
-  stack_start_a=0x1e01,--to 1eff
   stack_pointer_b=0x1f00,
-  stack_start_b=0x1f01,--to 1fff
 
   sprites=0x2000,--to 22ff
   
@@ -123,6 +124,7 @@ function love.load()
     base_mem = love.data.newByteData(memsize)
     mem=ffi.cast("uint8_t*", base_mem:getFFIPointer())
     memsigned=ffi.cast("int8_t*", base_mem:getFFIPointer())
+    memdouble=ffi.cast("double*", base_mem:getFFIPointer())
   else
     --shame this has to happen for web support :/
     base_mem={}

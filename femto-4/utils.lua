@@ -42,6 +42,14 @@ function deep_print(tbl,indent)
   end
 end
 
+function gentbl(v,len)
+  local newtbl={}
+  for l=1,len do
+    newtbl[l]=v
+  end
+  return newtbl
+end
+
 --- string pad, appends a character to the start of a string til it hits a given length
 ---@param st string
 ---@param len number
