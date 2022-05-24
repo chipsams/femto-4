@@ -312,9 +312,9 @@ local ops_definition={
     local _,r1,sign,value=unpack(tokens)
     --print('"'..(better_tonumber(value) or "?")..'"')
     if not value and better_tonumber(sign) then sign,value="+",sign end
-    if not (sign=="-" or sign=="+") then print"no sign" return false end
-    if not reg_names[r1] then print"no reg" return false end
-    if not better_tonumber(value) then print"not a number" return false end
+    if not (sign=="-" or sign=="+") then return false end
+    if not reg_names[r1] then return false end
+    if not better_tonumber(value) then return false end
     return true,bitpack({5,3,1,7},id,reg_names[r1],sign=="-" and 1 or 0,better_tonumber(value))
   end,". r '[+%-]? n"},
   {"ldc",function(b1,b2)
@@ -441,7 +441,6 @@ local ops_definition={
       local r1,r2=bitsplit(mem[s.pc+2],0,{4,4,8})
       table.insert(regs,r1)
       table.insert(regs,r2)
-      print(l)
       s.pc=s.pc+1
     end
     print(unpack(regs))
@@ -451,7 +450,6 @@ local ops_definition={
     else w=8 end
 
     for l=1,reg_count+1 do
-      print(l,regs[l],format,mode,adr)
       s.registers[regs[l]+1]=s.mem_reg(adr,format,mode)
       adr=adr+w
     end
@@ -672,6 +670,90 @@ local ops_definition={
     if not reg then return false end
     return true,bitpack({5,3,8},id,reg,0)
   end,". r"},
+  {{"mcpy","mset"},function(b1,b2)
+    local function getnumber()
+      local b1,b2=mem[s.pc+2],mem[s.pc+3]
+      s.pc=s.pc+2
+      return bitsplit(b1,b2,{16})
+    end
+    local _,cpy = bitsplit(b1,b2,{5,1,10})
+    local b3=mem[s.pc+2]
+    s.pc=s.pc+1
+    
+    if cpy==1 then
+      local _,cpy,from_r,from, to_r,to = bitsplit(b1,b2,{5,1,1,3,1,3,2})
+      local _,width_r,width = bitsplit(b2,b3,{6,1,3,6})
+      if  from_r==1 then  from=get_regs( from)() else  from=getnumber() end
+      if    to_r==1 then    to=get_regs(   to)() else    to=getnumber() end
+      if width_r==1 then width=get_regs(width)() else width=getnumber() end
+
+      memcpy(from,to,width)
+      s.cpubudget=s.cpubudget-width/4
+    else
+      local _,cpy,to_r,to, value_r,value = bitsplit(b1,b2,{5,1,1,3,1,3,2})
+      local _,width_r,width = bitsplit(b2,b3,{6,1,3,6})
+      if    to_r==1 then    to=get_regs(   to)() else    to=getnumber() end
+      if value_r==1 then value=get_regs(value)() else value=mem[s.pc+2] s.pc=s.pc+1 end
+      if width_r==1 then width=get_regs(width)() else width=getnumber() end
+
+      memset(to,width,value)
+      s.cpubudget=s.cpubudget-width/8
+    end
+  end,function(id,line)
+    --from, to, width
+    local tokens=tokenize(line)
+    if tokens[1]=="mcpy" then
+      local op_name,from_t,to_t,width_t=unpack(tokens)
+      local from_r,to_r,width_r=get_reg_names(from_t,to_t,width_t)
+      if not (better_tonumber( from_t) or  from_r) then return end
+      if not (better_tonumber(   to_t) or    to_r) then return end
+      if not (better_tonumber(width_t) or width_r) then return end
+      -- aaaaaaaaBBBBBBBBcccccccc
+      -- -----=-===-===-===------
+      local bytes=bitpack({5,1, 1,3, 1,3, 1,3, 6},id,1, from_r and 1 or 0,from_r or 0,to_r and 1 or 0,to_r or 0,width_r and 1 or 0,width_r or 0,0)
+      if not from_r and better_tonumber(from_t) then
+        local b1,b2=unpack(bitpack({16},better_tonumber(from_t)))
+        table.insert(bytes,b1)
+        table.insert(bytes,b2)
+      end
+      if not to_r and better_tonumber(to_t) then
+        local b1,b2=unpack(bitpack({16},better_tonumber(to_t)))
+        table.insert(bytes,b1)
+        table.insert(bytes,b2)
+      end
+      if not width_r and better_tonumber(width_t) then
+        local b1,b2=unpack(bitpack({16},better_tonumber(width_t)))
+        table.insert(bytes,b1)
+        table.insert(bytes,b2)
+      end
+      return true,bytes
+    
+    else
+      local op_name,to_t,value_t,width_t=unpack(tokens)
+      local to_r,value_r,width_r=get_reg_names(to_t,value_t,width_t)
+      if not (better_tonumber(   to_t) or    to_r) then return end
+      if not (better_tonumber(value_t) or value_r) then return end
+      if not (better_tonumber(width_t) or width_r) then return end
+      -- aaaaaaaaBBBBBBBBcccccccc
+      -- -----=-===-===-===------
+      local bytes=bitpack({5,1, 1,3, 1,3, 1,3, 6},id,0,to_r and 1 or 0,to_r or 0,value_r and 1 or 0,value_r or 0,width_r and 1 or 0,width_r or 0,0)
+      if not to_r and better_tonumber(to_t) then
+        local b1,b2=unpack(bitpack({16},better_tonumber(to_t)))
+        table.insert(bytes,b1)
+        table.insert(bytes,b2)
+      end
+      if not value_r and better_tonumber(value_t) then
+        local b=better_tonumber(value_t)%256
+        table.insert(bytes,b)
+      end
+      if not width_r and better_tonumber(width_t) then
+        local b1,b2=unpack(bitpack({16},better_tonumber(width_t)))
+        table.insert(bytes,b1)
+        table.insert(bytes,b2)
+      end
+      return true,bytes
+    end
+  end,". r|n r|n r|n"},
   {{"stt","stat","get"},function(b1,b2)
     s.cpubudget=s.cpubudget-9
     local _,reg_mode,stat,t_reg=bitsplit(b1,b2,{5,1,7,3})
@@ -782,7 +864,7 @@ local function parsecommand(b1,b2)
   local i=bitsplit(b1,b2,{5,11})
   if ops[i] then
     local name=ops_definition[i][1]
-    print("parsed:",type(name)=="table" and name[1] or name)
+    --print("parsed:",type(name)=="table" and name[1] or name)
     ops[i](b1,b2)
   end
   
