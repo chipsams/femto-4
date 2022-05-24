@@ -125,7 +125,8 @@ end
 ---@param x number
 ---@param y number
 ---@param c number
-function sc_write(st,x,y,c)
+function sc_write(st,x,y,c,pset_override)
+  local pset=pset_override or pset
   c=c or 0
   local linestart=x or 1
   if not (c or y) then c,x=x,nil end
