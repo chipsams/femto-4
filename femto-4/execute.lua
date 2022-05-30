@@ -443,7 +443,7 @@ local ops_definition={
       table.insert(regs,r2)
       s.pc=s.pc+1
     end
-    print(unpack(regs))
+    --print(unpack(regs))
     local w=1
     if format==1 then
     elseif format==2 then
@@ -483,17 +483,17 @@ local ops_definition={
     for l,register in pairs(tokens) do
       table.insert(registers,get_reg_names(register))
     end
-    print(unpack(registers))
-    print(address)
-    print(id)
+    --print(unpack(registers))
+    --print(address)
+    --print(id)
     if better_tonumber(address) then
       local p_num_registers=#registers
       if #registers%2==1 then table.insert(registers,0) end
       local elemcount=gentbl(4,#registers)
       local bytes=bitpack({5,1,3,3,3,1},id, 0,0,p_num_registers-1,formats[format],mode)
-      for _,v in pairs(bitpack({16},better_tonumber(address))) do print(v) table.insert(bytes,v) end
-      for _,v in pairs(bitpack(elemcount,unpack(registers))) do print(v) table.insert(bytes,v) end
-      print("num bytes:",unpack(bytes))
+      for _,v in pairs(bitpack({16},better_tonumber(address))) do table.insert(bytes,v) end
+      for _,v in pairs(bitpack(elemcount,unpack(registers))) do table.insert(bytes,v) end
+      --print("num bytes:",unpack(bytes))
       return true,bytes
     elseif get_reg_names(address) then
       
@@ -502,7 +502,7 @@ local ops_definition={
       local elemcount=gentbl(4,#registers)
       local bytes=bitpack({5,1,3,3,3,1},id, 1,get_reg_names(address),p_num_registers-1,formats[format],mode)
       for _,v in pairs(bitpack(elemcount,unpack(registers))) do table.insert(bytes,v) end
-      print("reg bytes:",unpack(bytes))
+      --print("reg bytes:",unpack(bytes))
       return true,bytes
     end
   end,". n|r '^u8$|'^s8$|'^n$£not_a_format '^stk$|'^reg$? r r? r? r? r? r? r? r?"},
