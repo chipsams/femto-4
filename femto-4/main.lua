@@ -1,6 +1,4 @@
 
-local ffi
-
 print(love.system.getOS())
 if love.system.getOS()=="Web" then
   bit=(require"bitreplace").bit
@@ -27,6 +25,9 @@ mem_map={
   draw_pal=0x1a14,--to 1a17 
   transparency_pal=0x1a18,--to 1a1b
 
+  sound_pointer=0x1a20,--relative offset from sound_start, in multiples of 4.
+  sound_start=0x2600,  --to 29ff, start of the sound channels, each is 1 byte wide. 4 bits to pitch, 4 to volume.
+
   regs_start=0x1d00,
 
   --stacks can safely index 254 values
@@ -36,8 +37,8 @@ mem_map={
   sprites=0x2000,--to 22ff
   
   screen=0x2300,--to 25ff
-
   screen_length=0x25ff-0x2300,
+
 
 }
 
@@ -122,6 +123,7 @@ function love.load()
   --these point to the same data, but one sets/gets in the range 0 to 255 and the other sets/gets in the range -128 to 127.
   if ffi then
     base_mem = love.data.newByteData(memsize)
+    temp_mem = love.data.newByteData(memsize)
     mem=ffi.cast("uint8_t*", base_mem:getFFIPointer())
     memsigned=ffi.cast("int8_t*", base_mem:getFFIPointer())
     memdouble=ffi.cast("double*", base_mem:getFFIPointer())
@@ -138,7 +140,6 @@ function love.load()
       __newindex=function(_,i,v) v=math.floor(v)%256 base_mem[i]=v end
     })
   end
-
 
   require"graphics"
   screen={
@@ -176,6 +177,7 @@ function love.load()
   
   cart_manip=require"cart_manip"
   
+  audiochannels=require"audio"
   confstate=require"settings"
   execstate=require"execute"
   codestate=require"code"
@@ -213,6 +215,9 @@ local keysource
 
 escape_timer=0
 function love.update(dt)
+  updatesound()
+
+
   if repeatkey then
     repeattimer=repeattimer+dt
     if repeattimer>confstate.settings.editor_settings.keyboard.delay then
@@ -231,6 +236,7 @@ function love.update(dt)
   if currentscene.update then currentscene.update(dt) end
   updatemouse()
   if currentscene.draw then currentscene.draw(t) end
+  
 end
 
 function love.draw()

@@ -68,7 +68,7 @@ s.commands={
         term_print("wrote to\n"..filename)
       end
     end,
-    helptxt="saves a file. if it ends in .f4.png then the file is saved in the png format."
+    helpmsg="saves a file. if it ends in .f4.png then the file is saved in the png format."
   },
   {
     name="load",

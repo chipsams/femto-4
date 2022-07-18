@@ -5,11 +5,14 @@ s.settings_default={
   editor_settings={
     display={
       editor_pal={0,1,2,3},
-      hires=false,
+      hires=false
     },
     keyboard={
       ["repeat"]=0.05,
       delay=0.4
+    },
+    cart={
+      reset_data=true
     },
   }
 }
@@ -45,25 +48,36 @@ end
 s.settings_layout={
   {
     type="tab",
-    open=true,
-    name="pallete",
+    open=false,
+    name="display",
     contents={
       {type="number",name="col 0",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,1}},
       {type="number",name="col 1",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,2}},
       {type="number",name="col 2",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,3}},
       {type="number",name="col 3",min=0,max=255,step=1,target={s.settings.editor_settings.display.editor_pal,4}},
+      {type="toggle",name="hi res",target={s.settings.editor_settings.display,"hires"}},
     },
   },
   {
     type="tab",
-    open=true,
+    open=false,
     name="keyboard",
     contents={
       {type="number",name="repeat",min=0.025,step=0.025,max=0.5,target={s.settings.editor_settings.keyboard,"repeat"}},
-      {type="number",name="delay",min=0.05,step=0.05,max=2,target={s.settings.editor_settings.keyboard,"delay"}}
+      {type="number",name="delay",min=0.05,step=0.05,max=2,target={s.settings.editor_settings.keyboard,"delay"}},
     }
   },
-  {type="toggle",name="hi res",target={s.settings.editor_settings.display,"hires"}},
+  {
+    type="tab",
+    open=false,
+    name="memory",
+    contents={
+      {type="comment",text="resets the mem"},
+      {type="comment",text="when the cart"},
+      {type="comment",text="resets"},
+      {type="toggle",name="reload",target={s.settings.editor_settings.cart,"reset_data"}},
+    }
+  },
 }
 
 s.display={}
@@ -96,6 +110,9 @@ function calctab(contents,dx,dy)
         v.target[1][v.target[2]]=not v.target[1][v.target[2]]
         savesettings()
       end})
+      dy=dy+4
+    elseif v.type=="comment" then
+      table.insert(s.display,{type="text",txt=v.text,x=dx,y=dy,c=3})
       dy=dy+4
     end
   end

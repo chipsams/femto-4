@@ -1,6 +1,9 @@
 local s={}
 
 function s.quit()
+  mem=ffi.cast("uint8_t*", base_mem:getFFIPointer())
+  memsigned=ffi.cast("int8_t*", base_mem:getFFIPointer())
+  memdouble=ffi.cast("double*", base_mem:getFFIPointer())
   mem[mem_map.hirez]=confstate.settings.editor_settings.display.hires and 1 or 0
   for l=0,3 do
     mem[mem_map.screen_pal+l]=confstate.settings.editor_settings.display.editor_pal[l+1]  --init screen pallete
@@ -271,6 +274,29 @@ local ops_definition={
     elseif op==3 then r3(r1()/r2()) end
   end,function(id,line,_,linenum)
     local opnames={add=0,sub=1,mul=2,div=3}
+    local tokens=tokenize(line)
+    local opid=0
+    local opname,r1n,r2n,r3n=unpack(tokens)
+
+    if not opid then return false end
+
+    local r1,r2,r3=get_reg_names(r1n,r2n,r3n)
+    if not (r1 and r2 and r3) then
+      return false
+    end
+    if not opnames[opname] then return false end
+    return true,bitpack({5,3,3,3,2},id,r1,r2,r3,opnames[opname])
+  end,". r£r1 r£r2 r£r3"},
+  {{"xor","and","shf","bor"},function(b1,b2)--bitmaths
+    local _,r1,r2,r3,op=bitsplit(b1,b2,{5,3,3,3,2})
+    r1,r2,r3=get_regs(r1,r2,r3)
+    local v1,v2=r1(),r2()
+    if op==0 then     r3(bit.bxor(v1,v2))
+    elseif op==1 then r3(bit.band(v1,v2))
+    elseif op==2 then r3(v2 > 0 and bit.lshift(v1,v2) or bit.rshift(v1,-v2))
+    elseif op==3 then r3(bit.bor(v1,v2)) end
+  end,function(id,line,_,linenum)
+    local opnames={["xor"]=0,["and"]=1,["shf"]=2,["bor"]=3}
     local tokens=tokenize(line)
     local opid=0
     local opname,r1n,r2n,r3n=unpack(tokens)
@@ -907,6 +933,16 @@ function s.mem_reg(addr,numberformat,mode,clear)
 end
 
 function s.init()
+  if ffi then
+    ffi.copy(temp_mem:getFFIPointer(),base_mem:getFFIPointer(),memsize)
+  else
+    for k,v in ipairs(base_mem) do
+      temp_mem[k]=v
+    end
+  end
+  mem=ffi.cast("uint8_t*", temp_mem:getFFIPointer())
+  memsigned=ffi.cast("int8_t*", temp_mem:getFFIPointer())
+  memdouble=ffi.cast("double*", temp_mem:getFFIPointer())
   s.cpubudget=0
   mem[mem_map.stack_pointer_a]=0
   mem[mem_map.stack_pointer_b]=0
